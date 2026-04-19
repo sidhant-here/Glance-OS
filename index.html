@@ -1,35 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SysVision OS — Process Monitor</title>
+  <title>SysVision OS â€” Process Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap"
     rel="stylesheet">
   <style>
+    /* â”€â”€ Deep Ocean (Night) â”€â”€ */
     :root {
-      --bg-base: #070b14;
-      --bg-panel: #0d1220;
-      --bg-card: #111827;
-      --bg-hover: #1a2235;
-      --border: #1e2d47;
-      --border-glow: #2a4a7f;
-      --accent-cyan: #00e5ff;
-      --accent-green: #39ff8a;
-      --accent-amber: #ffaa00;
-      --accent-red: #ff3d5a;
-      --accent-purple: #a259ff;
-      --text-primary: #e8f0fe;
-      --text-secondary: #7a8fa6;
-      --text-dim: #3d5068;
+      --bg-base: #0A1628;
+      --bg-panel: #0F1D32;
+      --bg-card: #132238;
+      --bg-hover: #1A2D4A;
+      --border: #1E3A5F;
+      --border-glow: #2A5A8F;
+      --accent-cyan: #38BDF8;
+      --accent-green: #34D399;
+      --accent-amber: #FBBF24;
+      --accent-red: #F87171;
+      --accent-purple: #818CF8;
+      --text-primary: #E2E8F0;
+      --text-secondary: #94A3B8;
+      --text-dim: #475569;
       --font-mono: 'JetBrains Mono', monospace;
       --font-display: 'Syne', sans-serif;
-      --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.25);
-      --glow-green: 0 0 20px rgba(57, 255, 138, 0.25);
-      --glow-red: 0 0 20px rgba(255, 61, 90, 0.3);
+      --glow-cyan: 0 0 20px rgba(56, 189, 248, 0.25);
+      --glow-green: 0 0 20px rgba(52, 211, 153, 0.25);
+      --glow-red: 0 0 20px rgba(248, 113, 113, 0.3);
     }
 
     *,
@@ -49,7 +50,7 @@
       overflow-x: auto;
     }
 
-    /* ── Noise Overlay (GPU-composited, low z-index to reduce paint cost) ── */
+    /* â”€â”€ Noise Overlay (GPU-composited, low z-index to reduce paint cost) â”€â”€ */
     body::before {
       content: '';
       position: fixed;
@@ -62,18 +63,18 @@
       transform: translateZ(0);
     }
 
-    /* ── Scanlines (GPU layer) ── */
+    /* â”€â”€ Scanlines (GPU layer) â”€â”€ */
     body::after {
       content: '';
       position: fixed;
       inset: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 229, 255, 0.015) 2px, rgba(0, 229, 255, 0.015) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(56, 189, 248, 0.015) 2px, rgba(56, 189, 248, 0.015) 4px);
       pointer-events: none;
       z-index: 9998;
       transform: translateZ(0);
     }
 
-    /* ── Scrollbar ── */
+    /* â”€â”€ Scrollbar â”€â”€ */
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
@@ -88,13 +89,13 @@
       border-radius: 2px;
     }
 
-    /* ── HEADER ── */
+    /* â”€â”€ HEADER â”€â”€ */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 24px;
-      background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.05) 0%, transparent 100%);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
@@ -111,7 +112,7 @@
     .logo-icon {
       width: 32px;
       height: 32px;
-      background: conic-gradient(from 180deg, var(--accent-cyan), var(--accent-green), var(--accent-cyan));
+      background: conic-gradient(from 180deg, var(--accent-cyan), var(--accent-purple), var(--accent-cyan));
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -136,7 +137,7 @@
       font-size: 18px;
       font-weight: 800;
       letter-spacing: 0.05em;
-      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -170,15 +171,15 @@
 
     .nav-tab:hover {
       color: var(--accent-cyan);
-      background: rgba(0, 229, 255, 0.06);
+      background: rgba(56, 189, 248, 0.06);
       border-color: var(--border);
     }
 
     .nav-tab.active {
       color: var(--accent-cyan);
-      background: rgba(0, 229, 255, 0.1);
-      border-color: rgba(0, 229, 255, 0.3);
-      box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
     }
 
     .header-right {
@@ -246,7 +247,7 @@
       box-shadow: var(--glow-red);
     }
 
-    /* ── LAYOUT ── */
+    /* â”€â”€ LAYOUT â”€â”€ */
     .dashboard {
       padding: 16px 20px;
       display: grid;
@@ -256,7 +257,7 @@
       margin: 0 auto;
     }
 
-    /* ── ALERT BAR ── */
+    /* â”€â”€ ALERT BAR â”€â”€ */
     .alert-bar {
       background: linear-gradient(90deg, rgba(255, 170, 0, 0.1), rgba(255, 170, 0, 0.05));
       border: 1px solid rgba(255, 170, 0, 0.3);
@@ -302,7 +303,7 @@
       color: var(--accent-amber);
     }
 
-    /* ── GAUGE ROW ── */
+    /* â”€â”€ GAUGE ROW â”€â”€ */
     .gauges-row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -442,7 +443,7 @@
       color: var(--text-dim);
     }
 
-    /* ── CHARTS ROW ── */
+    /* â”€â”€ CHARTS ROW â”€â”€ */
     .charts-row {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr;
@@ -519,14 +520,14 @@
       --card-accent: var(--accent-purple);
     }
 
-    /* ── BOTTOM ROW ── */
+    /* â”€â”€ BOTTOM ROW â”€â”€ */
     .bottom-row {
       display: grid;
       grid-template-columns: 1fr 1.8fr;
       gap: 14px;
     }
 
-    /* ── SYSTEM INFO CARD ── */
+    /* â”€â”€ SYSTEM INFO CARD â”€â”€ */
     .info-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -614,7 +615,7 @@
       margin-top: 5px;
     }
 
-    /* ── PROCESS TABLE ── */
+    /* â”€â”€ PROCESS TABLE â”€â”€ */
     .process-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -644,8 +645,8 @@
     }
 
     .proc-count {
-      background: rgba(0, 229, 255, 0.1);
-      border: 1px solid rgba(0, 229, 255, 0.2);
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
       color: var(--accent-cyan);
       font-size: 9px;
       padding: 2px 7px;
@@ -687,7 +688,7 @@
     }
 
     .search-input:focus {
-      border-color: rgba(0, 229, 255, 0.4);
+      border-color: rgba(56, 189, 248, 0.4);
     }
 
     .filter-btn {
@@ -705,9 +706,9 @@
 
     .filter-btn:hover,
     .filter-btn.active {
-      border-color: rgba(0, 229, 255, 0.4);
+      border-color: rgba(56, 189, 248, 0.4);
       color: var(--accent-cyan);
-      background: rgba(0, 229, 255, 0.05);
+      background: rgba(56, 189, 248, 0.05);
     }
 
     .table-wrap {
@@ -761,14 +762,14 @@
     }
 
     tr.selected td {
-      background: rgba(0, 229, 255, 0.05);
+      background: rgba(56, 189, 248, 0.05);
     }
 
     .group-parent td {
       cursor: pointer;
     }
     .group-parent:hover td {
-      background: rgba(0, 229, 255, 0.08);
+      background: rgba(56, 189, 248, 0.08);
     }
     .chevron {
       display: inline-block;
@@ -816,14 +817,14 @@
     }
 
     .status-running {
-      background: rgba(57, 255, 138, 0.1);
-      border: 1px solid rgba(57, 255, 138, 0.2);
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.2);
       color: var(--accent-green);
     }
 
     .status-sleeping {
-      background: rgba(0, 229, 255, 0.08);
-      border: 1px solid rgba(0, 229, 255, 0.15);
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.15);
       color: var(--accent-cyan);
     }
 
@@ -899,22 +900,22 @@
 
     .act-resume {
       color: var(--accent-green);
-      border-color: rgba(57, 255, 138, 0.3);
-      background: rgba(57, 255, 138, 0.08);
+      border-color: rgba(52, 211, 153, 0.3);
+      background: rgba(52, 211, 153, 0.08);
     }
 
     .act-resume:hover {
-      background: rgba(57, 255, 138, 0.2);
+      background: rgba(52, 211, 153, 0.2);
       box-shadow: var(--glow-green);
     }
 
-    /* ── MINI SPARKLINES ── */
+    /* â”€â”€ MINI SPARKLINES â”€â”€ */
     .sparkline {
       display: inline-block;
       vertical-align: middle;
     }
 
-    /* ── TOAST ── */
+    /* â”€â”€ TOAST â”€â”€ */
     .toast-container {
       position: fixed;
       bottom: 24px;
@@ -981,7 +982,7 @@
       font-size: 9px;
     }
 
-    /* ── FOOTER ── */
+    /* â”€â”€ FOOTER â”€â”€ */
     .footer {
       display: flex;
       justify-content: space-between;
@@ -1008,13 +1009,13 @@
       color: var(--accent-cyan);
     }
 
-    /* ── ANIMATED GRID BACKGROUND ── */
+    /* â”€â”€ ANIMATED GRID BACKGROUND â”€â”€ */
     .grid-bg {
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+        linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.02) 1px, transparent 1px);
       background-size: 40px 40px;
       pointer-events: none;
       z-index: 0;
@@ -1030,7 +1031,7 @@
       z-index: 100;
     }
 
-    /* ── RESPONSIVE ── */
+    /* â”€â”€ RESPONSIVE â”€â”€ */
     @media (max-width:1200px) {
       .gauges-row {
         grid-template-columns: repeat(3, 1fr);
@@ -1045,7 +1046,7 @@
       }
     }
 
-    /* ── ANIMATIONS ── */
+    /* â”€â”€ ANIMATIONS â”€â”€ */
     @keyframes glow-pulse {
 
       0%,
@@ -1074,7 +1075,7 @@
 
     @keyframes tab-flash {
       0% {
-        box-shadow: 0 0 30px rgba(0, 229, 255, 0.6);
+        box-shadow: 0 0 30px rgba(56, 189, 248, 0.6);
         border-color: var(--accent-cyan);
       }
       100% {
@@ -1087,7 +1088,7 @@
       animation: tab-flash 1s ease-out;
     }
 
-    /* ── Process Kill Modal ── */
+    /* â”€â”€ Process Kill Modal â”€â”€ */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -1189,7 +1190,7 @@
       color: var(--text-primary);
     }
 
-    /* ── METRICS MINI CARDS ── */
+    /* â”€â”€ METRICS MINI CARDS â”€â”€ */
     .metrics-strip {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1246,31 +1247,61 @@
       color: var(--accent-green);
     }
     
-    /* ── THEME TOGGLE ── */
+    /* â”€â”€ THEME: Arctic (Main) â”€â”€ */
     body.light-mode {
-      --bg-base: #e6e9ef;
-      --bg-panel: #f0f3f8;
-      --bg-card: #ffffff;
-      --bg-hover: #dfe4eb;
-      --border: #d1d9e6;
-      --border-glow: #a3b8cc;
-      --text-primary: #1e293b;
-      --text-secondary: #64748b;
-      --text-dim: #94a3b8;
-      
-      --accent-cyan: #0284c7;
-      --accent-green: #059669;
-      --accent-amber: #d97706;
-      --accent-red: #e11d48;
-      --accent-purple: #7c3aed;
+      --bg-base: #E3EFF8;
+      --bg-panel: #EBF3FA;
+      --bg-card: #FFFFFF;
+      --bg-hover: #D6E4F0;
+      --border: #B8D0E4;
+      --border-glow: #8BB4D0;
+      --text-primary: #1E293B;
+      --text-secondary: #64748B;
+      --text-dim: #94A3B8;
 
-      --glow-cyan: 0 0 15px rgba(2, 132, 199, 0.15);
-      --glow-green: 0 0 15px rgba(5, 150, 105, 0.15);
-      --glow-red: 0 0 15px rgba(225, 29, 72, 0.2);
+      --accent-cyan: #2A8FD4;
+      --accent-green: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-red: #EF4444;
+      --accent-purple: #8B5CF6;
+
+      --glow-cyan: 0 0 15px rgba(42, 143, 212, 0.2);
+      --glow-green: 0 0 15px rgba(16, 185, 129, 0.15);
+      --glow-red: 0 0 15px rgba(239, 68, 68, 0.2);
     }
-    body.light-mode::before { opacity: 0.1; filter: invert(1); }
+    body.light-mode::before { opacity: 0.08; filter: invert(1); }
     body.light-mode::after {
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(42, 143, 212, 0.02) 2px, rgba(42, 143, 212, 0.02) 4px);
+    }
+
+    /* â”€â”€ THEME: Crystal (Light) â”€â”€ */
+    body.crystal-mode {
+      --bg-base: #F8FAFC;
+      --bg-panel: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-hover: #F1F5F9;
+      --border: #CBD5E1;
+      --border-glow: #93A8C2;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+      --text-dim: #94A3B8;
+
+      --accent-cyan: #3B82F6;
+      --accent-green: #22C55E;
+      --accent-amber: #EAB308;
+      --accent-red: #EF4444;
+      --accent-purple: #8B5CF6;
+
+      --glow-cyan: 0 0 15px rgba(59, 130, 246, 0.2);
+      --glow-green: 0 0 15px rgba(34, 197, 94, 0.15);
+      --glow-red: 0 0 15px rgba(239, 68, 68, 0.2);
+    }
+    body.crystal-mode::before { opacity: 0.05; filter: invert(1); }
+    body.crystal-mode::after {
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(59, 130, 246, 0.015) 2px, rgba(59, 130, 246, 0.015) 4px);
+    }
+    body.crystal-mode .group-child td {
+      background: rgba(0, 0, 0, 0.03) !important;
     }
     
     .theme-switch {
@@ -1285,7 +1316,8 @@
       border: none;
       -webkit-tap-highlight-color: transparent;
     }
-    body.light-mode .theme-switch {
+    body.light-mode .theme-switch,
+    body.crystal-mode .theme-switch {
       background: #e9ecef;
       box-shadow: inset 3px 3px 6px #c8d0d8, inset -3px -3px 6px #ffffff;
     }
@@ -1302,10 +1334,12 @@
       transition: opacity 0.3s;
       letter-spacing: 0.05em;
     }
-    .text-dark { left: 12px; }
-    .text-light { right: 12px; opacity: 0; color: #94a3b8; }
+    .text-dark { left: 10px; }
+    .text-light { right: 10px; opacity: 0; color: #94a3b8; }
     body.light-mode .text-dark { opacity: 0; }
     body.light-mode .text-light { opacity: 1; }
+    body.crystal-mode .text-dark { opacity: 0; }
+    body.crystal-mode .text-light { opacity: 1; }
 
     .theme-thumb {
       position: absolute;
@@ -1322,6 +1356,11 @@
       justify-content: center;
     }
     body.light-mode .theme-thumb {
+      left: calc(50% - 15px);
+      background: #ffffff;
+      box-shadow: 2px 2px 5px #c8d0d8, -2px -2px 5px #ffffff;
+    }
+    body.crystal-mode .theme-thumb {
       left: calc(100% - 33px);
       background: #ffffff;
       box-shadow: 2px 2px 5px #c8d0d8, -2px -2px 5px #ffffff;
@@ -1338,10 +1377,12 @@
       stroke-linejoin: round; 
     }
     .icon-sun { opacity: 0; stroke: #64748b; }
-    body.light-mode .icon-sun { opacity: 1; }
+    body.light-mode .icon-sun { opacity: 0.5; }
     body.light-mode .icon-moon { opacity: 0; }
+    body.crystal-mode .icon-sun { opacity: 1; }
+    body.crystal-mode .icon-moon { opacity: 0; }
 
-    /* ── PER-CORE CPU BARS ── */
+    /* â”€â”€ PER-CORE CPU BARS â”€â”€ */
     .per-core-section {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -1401,7 +1442,7 @@
       color: var(--text-secondary);
     }
 
-    /* ── ALERT BADGES ── */
+    /* â”€â”€ ALERT BADGES â”€â”€ */
     .alert-bar.critical {
       background: linear-gradient(90deg, rgba(255, 61, 90, 0.15), rgba(255, 61, 90, 0.05));
       border-color: rgba(255, 61, 90, 0.4);
@@ -1417,10 +1458,10 @@
 
   <div class="grid-bg"></div>
 
-  <!-- ── HEADER ── -->
+  <!-- â”€â”€ HEADER â”€â”€ -->
   <header class="header">
     <div class="logo">
-      <div class="logo-icon">⬡</div>
+      <div class="logo-icon">â¬¡</div>
       <div>
         <div class="logo-text">Glance OS</div>
         <div class="logo-sub">Process Monitor v2.4.1</div>
@@ -1441,33 +1482,33 @@
         LIVE
       </div>
       <div class="clock" id="clock">--:--:--</div>
-      <div class="theme-switch" onclick="document.body.classList.toggle('light-mode')">
-        <div class="theme-text text-dark">DARK<br>MODE</div>
-        <div class="theme-text text-light">LIGHT<br>MODE</div>
+      <div class="theme-switch" onclick="cycleTheme()">
+        <div class="theme-text text-dark">DEEP<br>OCEAN</div>
+        <div class="theme-text text-light">CRYSTAL</div>
         <div class="theme-thumb">
           <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </div>
       </div>
-      <button class="header-btn" onclick="triggerAlert()">⚠ Force Alert</button>
+      <button class="header-btn" onclick="triggerAlert()">âš  Force Alert</button>
     </div>
   </header>
 
-  <!-- ── MAIN DASHBOARD ── -->
+  <!-- â”€â”€ MAIN DASHBOARD â”€â”€ -->
   <div class="dashboard">
 
     <!-- Alert Bar -->
     <div class="alert-bar" id="alertBar" style="display:none">
-      <div class="alert-icon">⚡</div>
-      <div class="alert-text" id="alertMsg">High CPU usage detected on core 3 — process <strong>node (PID 4821)</strong>
+      <div class="alert-icon">âš¡</div>
+      <div class="alert-text" id="alertMsg">High CPU usage detected on core 3 â€” process <strong>node (PID 4821)</strong>
         consuming 87%</div>
-      <div class="alert-close" onclick="document.getElementById('alertBar').style.display='none'">×</div>
+      <div class="alert-close" onclick="document.getElementById('alertBar').style.display='none'">Ã—</div>
     </div>
 
     <!-- QUICK METRICS -->
     <div class="metrics-strip">
       <div class="metric-mini">
-        <div class="metric-icon" style="background:rgba(0,229,255,0.1); color:var(--accent-cyan)">⚙</div>
+        <div class="metric-icon" style="background:rgba(0,229,255,0.1); color:var(--accent-cyan)">âš™</div>
         <div class="metric-mini-data">
           <div class="metric-mini-val" id="totalProcs" style="color:var(--accent-cyan)">142 <span
               class="delta up">+3</span></div>
@@ -1475,22 +1516,22 @@
         </div>
       </div>
       <div class="metric-mini">
-        <div class="metric-icon" style="background:rgba(57,255,138,0.1); color:var(--accent-green)">▶</div>
+        <div class="metric-icon" style="background:rgba(57,255,138,0.1); color:var(--accent-green)">â–¶</div>
         <div class="metric-mini-data">
-          <div class="metric-mini-val" id="runProcs" style="color:var(--accent-green)">38 <span class="delta">↑</span>
+          <div class="metric-mini-val" id="runProcs" style="color:var(--accent-green)">38 <span class="delta">â†‘</span>
           </div>
           <div class="metric-mini-key">Running</div>
         </div>
       </div>
       <div class="metric-mini">
-        <div class="metric-icon" style="background:rgba(255,170,0,0.1); color:var(--accent-amber)">⏸</div>
+        <div class="metric-icon" style="background:rgba(255,170,0,0.1); color:var(--accent-amber)">â¸</div>
         <div class="metric-mini-data">
           <div class="metric-mini-val" id="sleepProcs" style="color:var(--accent-amber)">98</div>
           <div class="metric-mini-key">Sleeping</div>
         </div>
       </div>
       <div class="metric-mini">
-        <div class="metric-icon" style="background:rgba(255,61,90,0.1); color:var(--accent-red)">☠</div>
+        <div class="metric-icon" style="background:rgba(255,61,90,0.1); color:var(--accent-red)">â˜ </div>
         <div class="metric-mini-data">
           <div class="metric-mini-val" id="zombieProcs" style="color:var(--accent-red)">6</div>
           <div class="metric-mini-key">Zombie / Stopped</div>
@@ -1524,8 +1565,8 @@
               stroke-dasharray="289" stroke-dashoffset="289" />
             <defs>
               <linearGradient id="cpuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#00e5ff" />
-                <stop offset="100%" stop-color="#39ff8a" />
+                <stop offset="0%" stop-color="#38BDF8" />
+                <stop offset="100%" stop-color="#34D399" />
               </linearGradient>
             </defs>
           </svg>
@@ -1544,7 +1585,7 @@
             <div class="gauge-stat-key">GHz</div>
           </div>
           <div class="gauge-stat">
-            <div class="gauge-stat-val" id="cpu-temp">--°</div>
+            <div class="gauge-stat-val" id="cpu-temp">--Â°</div>
             <div class="gauge-stat-key">Temp</div>
           </div>
         </div>
@@ -1562,8 +1603,8 @@
               stroke-dasharray="289" stroke-dashoffset="289" />
             <defs>
               <linearGradient id="memGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#39ff8a" />
-                <stop offset="100%" stop-color="#00e5ff" />
+                <stop offset="0%" stop-color="#34D399" />
+                <stop offset="100%" stop-color="#38BDF8" />
               </linearGradient>
             </defs>
           </svg>
@@ -1600,7 +1641,7 @@
               stroke-dasharray="289" stroke-dashoffset="289" />
             <defs>
               <linearGradient id="diskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#ffaa00" />
+                <stop offset="0%" stop-color="#FBBF24" />
                 <stop offset="100%" stop-color="#ff6b35" />
               </linearGradient>
             </defs>
@@ -1638,8 +1679,8 @@
               stroke-dasharray="289" stroke-dashoffset="289" />
             <defs>
               <linearGradient id="netGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#a259ff" />
-                <stop offset="100%" stop-color="#00e5ff" />
+                <stop offset="0%" stop-color="#818CF8" />
+                <stop offset="100%" stop-color="#38BDF8" />
               </linearGradient>
             </defs>
           </svg>
@@ -1651,11 +1692,11 @@
         <div class="gauge-stats">
           <div class="gauge-stat">
             <div class="gauge-stat-val" id="net-up">--</div>
-            <div class="gauge-stat-key">↑ Up</div>
+            <div class="gauge-stat-key">â†‘ Up</div>
           </div>
           <div class="gauge-stat">
             <div class="gauge-stat-val" id="net-dn">--</div>
-            <div class="gauge-stat-key">↓ Down</div>
+            <div class="gauge-stat-key">â†“ Down</div>
           </div>
           <div class="gauge-stat">
             <div class="gauge-stat-val" id="net-conn">--</div>
@@ -1676,8 +1717,8 @@
               stroke-dasharray="289" stroke-dashoffset="289" />
             <defs>
               <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#ff3d5a" />
-                <stop offset="100%" stop-color="#ffaa00" />
+                <stop offset="0%" stop-color="#F87171" />
+                <stop offset="100%" stop-color="#FBBF24" />
               </linearGradient>
             </defs>
           </svg>
@@ -1768,7 +1809,7 @@
 
       <!-- System Info -->
       <div class="info-card">
-        <div class="info-title">🖥 System Info</div>
+        <div class="info-title">ðŸ–¥ System Info</div>
         <div class="info-grid">
           <div class="info-row">
             <div class="info-key">Hostname</div>
@@ -1808,7 +1849,7 @@
           <div class="uptime-track">
             <div class="uptime-fill"></div>
           </div>
-          <div class="uptime-val" id="uptime-val">Loading…</div>
+          <div class="uptime-val" id="uptime-val">Loadingâ€¦</div>
         </div>
       </div>
 
@@ -1816,13 +1857,13 @@
       <div class="process-card">
         <div class="process-header">
           <div class="process-title">
-            ⚙ Process Manager
+            âš™ Process Manager
             <span class="proc-count" id="proc-badge">142 PROCS</span>
           </div>
           <div class="process-controls">
             <div class="search-wrap">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="search-input" id="procSearch" placeholder="Search process…"
+              <span class="search-icon">ðŸ”</span>
+              <input type="text" class="search-input" id="procSearch" placeholder="Search processâ€¦"
                 oninput="filterProcs()">
             </div>
             <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
@@ -1836,12 +1877,12 @@
           <table id="procTable">
             <thead>
               <tr>
-                <th onclick="sortTable('pid')">PID ↕</th>
-                <th onclick="sortTable('name')">Process ↕</th>
+                <th onclick="sortTable('pid')">PID â†•</th>
+                <th onclick="sortTable('name')">Process â†•</th>
                 <th onclick="sortTable('user')">User</th>
                 <th onclick="sortTable('status')">Status</th>
-                <th onclick="sortTable('cpu')">CPU% ↕</th>
-                <th onclick="sortTable('mem')">MEM% ↕</th>
+                <th onclick="sortTable('cpu')">CPU% â†•</th>
+                <th onclick="sortTable('mem')">MEM% â†•</th>
                 <th>Threads</th>
                 <th>Actions</th>
               </tr>
@@ -1859,9 +1900,9 @@
         <span>Refresh: <span style="color:var(--accent-green)">0.5s</span></span>
         <span>Session: <span style="color:var(--accent-cyan)" id="session-time">00:00</span></span>
         <span>Alerts: <span id="alert-count" style="color:var(--accent-amber)">0</span></span>
-        <span>Student Project — Operating Systems © 2024</span>
+        <span>Student Project â€” Operating Systems Â© 2024</span>
       </div>
-      <div class="footer-right">Built with <span>♥</span> — SysVision OS Dashboard</div>
+      <div class="footer-right">Built with <span>â™¥</span> â€” SysVision OS Dashboard</div>
     </div>
 
   </div><!-- /dashboard -->
@@ -1872,10 +1913,10 @@
   <!-- Kill Modal -->
   <div class="modal-overlay" id="killModal">
     <div class="modal">
-      <div class="modal-title">⚠ Terminate Process</div>
+      <div class="modal-title">âš  Terminate Process</div>
       <div class="modal-body">
         You are about to send <strong>SIGKILL</strong> to process<br>
-        <span class="modal-proc" id="killProcName">—</span><br><br>
+        <span class="modal-proc" id="killProcName">â€”</span><br><br>
         This action cannot be undone. Unsaved data in this process will be lost.
       </div>
       <div class="modal-btns">
@@ -1886,9 +1927,20 @@
   </div>
 
   <script>
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  THEME CYCLE: Deep Ocean â†’ Arctic â†’ Crystal
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const THEMES = ['', 'light-mode', 'crystal-mode'];
+    let themeIndex = 0;
+    function cycleTheme() {
+      document.body.classList.remove('light-mode', 'crystal-mode');
+      themeIndex = (themeIndex + 1) % THEMES.length;
+      if (THEMES[themeIndex]) document.body.classList.add(THEMES[themeIndex]);
+    }
+
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  STATE
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let cpuHistory = Array(60).fill(0);
     let memHistory = Array(60).fill(0);
     let netRxHist = Array(60).fill(0);
@@ -1901,15 +1953,15 @@
     let alertCount = 0;
     let sessionStart = Date.now();
 
-    // ── Alert cooldown (prevent spam) ──
+    // â”€â”€ Alert cooldown (prevent spam) â”€â”€
     let lastCpuAlertTime = 0;
     let lastMemAlertTime = 0;
     const ALERT_COOLDOWN_MS = 30000;
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  SMOOTH INTERPOLATION ENGINE (60fps)
     //  Values animate smoothly between server ticks
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const LERP_SPEED = 0.15; // How fast values catch up (0-1, higher = snappier)
     let targetValues = { cpu: 0, mem: 0, disk: 0, netGauge: 0, loadGauge: 0 };
     let currentValues = { cpu: 0, mem: 0, disk: 0, netGauge: 0, loadGauge: 0 };
@@ -1925,7 +1977,7 @@
       return current + diff * speed;
     }
 
-    // 60fps render loop — only touches GPU-friendly properties
+    // 60fps render loop â€” only touches GPU-friendly properties
     function animationLoop() {
       // Smoothly interpolate gauge values
       currentValues.cpu = lerp(currentValues.cpu, targetValues.cpu, LERP_SPEED);
@@ -1957,15 +2009,15 @@
       rafId = requestAnimationFrame(animationLoop);
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  PROCESS DATA
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let processes = [];
     let expandedGroups = new Set();
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  WEBSOCKET CONNECTION
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let ws = null;
     let wsConnected = false;
     let httpFallbackInterval = null;
@@ -1975,7 +2027,7 @@
         ws = new WebSocket('ws://localhost:8765');
         ws.onopen = () => {
           wsConnected = true;
-          console.log('✅ WebSocket connected');
+          console.log('âœ… WebSocket connected');
           if (httpFallbackInterval) { clearInterval(httpFallbackInterval); httpFallbackInterval = null; }
         };
         ws.onmessage = (evt) => {
@@ -1983,7 +2035,7 @@
         };
         ws.onclose = () => {
           wsConnected = false;
-          console.warn('⚠ WebSocket disconnected, falling back to HTTP');
+          console.warn('âš  WebSocket disconnected, falling back to HTTP');
           startHttpFallback();
           setTimeout(connectWebSocket, 3000);
         };
@@ -2002,9 +2054,9 @@
       }, 500);
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  CLOCK + UPTIME
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function updateClock() {
       const now = new Date();
       document.getElementById('clock').textContent = now.toTimeString().slice(0, 8);
@@ -2013,9 +2065,9 @@
         String(Math.floor(sess / 60)).padStart(2, '0') + ':' + String(sess % 60).padStart(2, '0');
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  GAUGE HELPER (cached elements for speed)
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const _gaugeCache = {};
     function setGauge(id, pct) {
       const circ = 289;
@@ -2024,24 +2076,24 @@
       if (el) el.style.strokeDashoffset = circ - (pct / 100) * circ;
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  APPLY METRICS (shared by WS + HTTP)
     //  Lightweight: only sets targets + flags redraws
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function applyMetrics(data) {
       try {
-        // ── CPU ──
+        // â”€â”€ CPU â”€â”€
         const cpu = Math.round(data.cpu.usage * 10) / 10;
         cpuHistory.push(cpu); if (cpuHistory.length > 60) cpuHistory.shift();
 
-        // ── Memory ──
+        // â”€â”€ Memory â”€â”€
         const mem = Math.round(((data.memory.used / data.memory.total) * 100) * 10) / 10;
         memHistory.push(mem); if (memHistory.length > 60) memHistory.shift();
 
-        // ── Disk ──
+        // â”€â”€ Disk â”€â”€
         const disk = data.disk.usagePercent;
 
-        // ── Network ──
+        // â”€â”€ Network â”€â”€
         const rxKb = data.network.download;
         const txKb = data.network.upload;
         const netTotal = rxKb + txKb;
@@ -2053,18 +2105,18 @@
         const temp = Math.floor(40 + cpu / 100 * 35);
         const rxKbps = rxKb * 8, txKbps = txKb * 8, netTotalKbps = netTotal * 8;
 
-        // ── Set interpolation targets (animated in rAF loop) ──
+        // â”€â”€ Set interpolation targets (animated in rAF loop) â”€â”€
         targetValues.cpu = cpu;
         targetValues.mem = mem;
         targetValues.disk = disk;
         targetValues.netGauge = Math.min(100, (netTotalKbps / 1024) / 10);
         targetValues.loadGauge = Math.min(100, (loadArr[0] / cores) * 100);
 
-        // ── Text updates (only update if value changed — no reflow) ──
+        // â”€â”€ Text updates (only update if value changed â€” no reflow) â”€â”€
         setText('cpu-pct', Math.round(cpu) + '%');
         setText('cpu-cores', cores);
         setText('cpu-freq', data.cpu.freq || '--');
-        setText('cpu-temp', temp + '°');
+        setText('cpu-temp', temp + 'Â°');
         setText('mem-pct', Math.round(mem) + '%');
         setText('mem-used', data.memory.used.toFixed(1));
         setText('mem-total', data.memory.total.toFixed(1));
@@ -2074,7 +2126,7 @@
         setText('disk-w', (typeof data.disk.write === 'number') ? data.disk.write.toFixed(1) : '-');
         setText('disk-total', data.disk.total + 'G');
 
-        // ── Network display ──
+        // â”€â”€ Network display â”€â”€
         setText('net-pct', netTotalKbps >= 1024 ? (netTotalKbps / 1024).toFixed(1) : netTotalKbps.toFixed(0));
         const netUnit = document.querySelector('#net-pct + .gauge-unit');
         if (netUnit) { const u = netTotalKbps >= 1024 ? 'Mbps' : 'Kbps'; if (netUnit.textContent !== u) netUnit.textContent = u; }
@@ -2083,13 +2135,13 @@
         setText('net-dn', fmtNet(rxKbps));
         setText('net-conn', data.network.connections || 0);
 
-        // ── Load average ──
+        // â”€â”€ Load average â”€â”€
         setText('load-pct', loadArr[0].toFixed(2));
         setText('load1', loadArr[0].toFixed(2));
         setText('load5', loadArr[1].toFixed(2));
         setText('load15', loadArr[2].toFixed(2));
 
-        // ── System info ──
+        // â”€â”€ System info â”€â”€
         if (data.system) {
           setText('sys-hostname', data.system.hostname);
           setText('sys-ip', data.system.ip || '-');
@@ -2101,21 +2153,21 @@
           setText('uptime-val', data.system.uptime);
         }
 
-        // ── Swap ──
+        // â”€â”€ Swap â”€â”€
         if (data.memory.swap) {
           setText('swap-val', data.memory.swap.used.toFixed(1) + ' / ' + data.memory.swap.total.toFixed(1) + ' GB');
         }
 
-        // ── CPU gauge color ──
+        // â”€â”€ CPU gauge color â”€â”€
         const cpuFill = document.getElementById('cpu-gauge');
         cpuFill.setAttribute('stroke', cpu > 75 ? 'url(#alertGrad)' : 'url(#cpuGrad)');
 
-        // ── Per-core CPU bars ──
+        // â”€â”€ Per-core CPU bars â”€â”€
         if (data.cpu.perCore && data.cpu.perCore.length > 0) {
           renderPerCore(data.cpu.perCore);
         }
 
-        // ── Processes ──
+        // â”€â”€ Processes â”€â”€
         processes = data.processes.list.map(p => ({
           pid: p.pid, name: p.name,
           user: p.user || 'SYSTEM',
@@ -2131,26 +2183,26 @@
         setText('sleepProcs', data.processes.sleeping);
         setText('zombieProcs', data.processes.zombie);
 
-        // ── Automatic alerts ──
+        // â”€â”€ Automatic alerts â”€â”€
         const now = Date.now();
         if (cpu > 90 && now - lastCpuAlertTime > ALERT_COOLDOWN_MS) {
           lastCpuAlertTime = now;
-          showAlert('🔴 CPU usage critically high at <strong>' + Math.round(cpu) + '%</strong> — investigate heavy processes', 'critical');
-          showToast('CPU > 90%: ' + Math.round(cpu) + '%', 'error', '🔥');
+          showAlert('ðŸ”´ CPU usage critically high at <strong>' + Math.round(cpu) + '%</strong> â€” investigate heavy processes', 'critical');
+          showToast('CPU > 90%: ' + Math.round(cpu) + '%', 'error', 'ðŸ”¥');
         }
         if (mem > 85 && now - lastMemAlertTime > ALERT_COOLDOWN_MS) {
           lastMemAlertTime = now;
-          showAlert('🟠 Memory usage high at <strong>' + Math.round(mem) + '%</strong> — ' + data.memory.used.toFixed(1) + ' / ' + data.memory.total.toFixed(1) + ' GB', 'critical');
-          showToast('Memory > 85%: ' + Math.round(mem) + '%', 'warn', '⚠');
+          showAlert('ðŸŸ  Memory usage high at <strong>' + Math.round(mem) + '%</strong> â€” ' + data.memory.used.toFixed(1) + ' / ' + data.memory.total.toFixed(1) + ' GB', 'critical');
+          showToast('Memory > 85%: ' + Math.round(mem) + '%', 'warn', 'âš ');
         }
 
-        // ── Flag deferred visual updates (handled in rAF loop) ──
+        // â”€â”€ Flag deferred visual updates (handled in rAF loop) â”€â”€
         needsChartUpdate = true;
         needsTableUpdate = true;
       } catch (err) { console.error('applyMetrics error', err); }
     }
 
-    // ── Efficient DOM text setter (avoids reflow when unchanged) ──
+    // â”€â”€ Efficient DOM text setter (avoids reflow when unchanged) â”€â”€
     const _textCache = {};
     function setText(id, val, isHTML) {
       if (!_textCache[id]) _textCache[id] = document.getElementById(id);
@@ -2161,9 +2213,9 @@
       else { if (el.textContent !== s) el.textContent = s; }
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  PER-CORE RENDERING
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function renderPerCore(cores) {
       const grid = document.getElementById('perCoreGrid');
       if (!grid) return;
@@ -2187,9 +2239,9 @@
       });
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  CHARTS
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function drawLineChart(canvas, datasets, opts = {}) {
       const ctx = canvas.getContext('2d');
       const W = canvas.width;
@@ -2243,7 +2295,7 @@
       });
     }
 
-    // ── Canvas size cache (avoids layout-triggering getBoundingClientRect) ──
+    // â”€â”€ Canvas size cache (avoids layout-triggering getBoundingClientRect) â”€â”€
     const _canvasSizeCache = {};
     let _lastResizeCheck = 0;
 
@@ -2265,7 +2317,7 @@
       if (c.height !== h) c.height = h;
     }
 
-    // ── Chart element cache ──
+    // â”€â”€ Chart element cache â”€â”€
     const _chartEls = {};
     function getChartEl(id) {
       if (!_chartEls[id]) _chartEls[id] = document.getElementById(id);
@@ -2282,28 +2334,28 @@
       resizeCanvas(netCanvas);
 
       drawLineChart(cpuCanvas, [
-        { data: cpuHistory, color: '#00e5ff' },
-        { data: cpuHistory.map(v => v * 0.35), color: '#39ff8a' },
-        { data: cpuHistory.map(v => v * 0.12), color: '#ffaa00' },
+        { data: cpuHistory, color: '#38BDF8' },
+        { data: cpuHistory.map(v => v * 0.35), color: '#34D399' },
+        { data: cpuHistory.map(v => v * 0.12), color: '#FBBF24' },
       ]);
 
       drawLineChart(memCanvas, [
-        { data: memHistory, color: '#39ff8a' },
-        { data: memHistory.map(v => v * 0.4), color: '#00e5ff' },
+        { data: memHistory, color: '#34D399' },
+        { data: memHistory.map(v => v * 0.4), color: '#38BDF8' },
       ]);
 
       // Auto-scale network chart based on peak value
       const netPeak = Math.max(10, ...netRxHist, ...netTxHist);
       const netMax = Math.ceil(netPeak * 1.3);
       drawLineChart(netCanvas, [
-        { data: netRxHist, color: '#a259ff' },
-        { data: netTxHist, color: '#00e5ff' },
+        { data: netRxHist, color: '#818CF8' },
+        { data: netTxHist, color: '#38BDF8' },
       ], { max: netMax });
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  PROCESS TABLE
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Real processes come down in updateMetrics now
     function updateProcesses() {
       // Replaced with backend polling
@@ -2361,7 +2413,7 @@
         return va < vb ? sortDir : va > vb ? -sortDir : 0;
       });
 
-      // ── Use DocumentFragment for batch DOM update (no intermediate reflows) ──
+      // â”€â”€ Use DocumentFragment for batch DOM update (no intermediate reflows) â”€â”€
       const frag = document.createDocumentFragment();
 
       groupedProcs.forEach(g => {
@@ -2381,7 +2433,7 @@
         }
       });
 
-      // Single DOM write — replaces all children at once
+      // Single DOM write â€” replaces all children at once
       const tbody = document.getElementById('procBody');
       tbody.textContent = ''; // faster than innerHTML = ''
       tbody.appendChild(frag);
@@ -2410,7 +2462,7 @@
       tr.innerHTML = `
         <td class="pid-cell">-</td>
         <td class="name-cell">
-            <span class="chevron ${isExpanded ? 'expanded' : ''}">▶</span>
+            <span class="chevron ${isExpanded ? 'expanded' : ''}">â–¶</span>
             ${g.name} <span style="color:var(--text-dim);font-size:9px;margin-left:4px">(${g.processes.length})</span>
         </td>
         <td style="color:var(--text-secondary)">various</td>
@@ -2470,9 +2522,9 @@
       tbody.appendChild(tr);
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  PROCESS ACTIONS
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function promptKill(pid, name) {
       killTarget = pid;
       document.getElementById('killProcName').textContent = `${name} (PID ${pid})`;
@@ -2494,14 +2546,14 @@
           }
           const res = await fetch('/api/kill/' + killTarget);
           if (res.ok) {
-            showToast(`Process ${p ? p.name : ''} (${killTarget}) terminated`, 'error', '💀');
+            showToast(`Process ${p ? p.name : ''} (${killTarget}) terminated`, 'error', 'ðŸ’€');
             alertCount++;
             document.getElementById('alert-count').textContent = alertCount;
           } else {
-            showToast('Failed to terminate process', 'error', '⚠');
+            showToast('Failed to terminate process', 'error', 'âš ');
           }
         } catch (err) {
-          showToast('Error communicating with system', 'error', '⚠');
+          showToast('Error communicating with system', 'error', 'âš ');
         }
       }
       closeModal();
@@ -2509,17 +2561,17 @@
 
     function pauseProc(pid) {
       const p = processes.find(x => x.pid === pid);
-      if (p) { p.paused = true; p.status = 'stopped'; showToast(`${p.name} paused (SIGSTOP)`, 'warn', '⏸'); renderTable(); }
+      if (p) { p.paused = true; p.status = 'stopped'; showToast(`${p.name} paused (SIGSTOP)`, 'warn', 'â¸'); renderTable(); }
     }
 
     function resumeProc(pid) {
       const p = processes.find(x => x.pid === pid);
-      if (p) { p.paused = false; p.status = 'running'; showToast(`${p.name} resumed (SIGCONT)`, 'success', '▶'); renderTable(); }
+      if (p) { p.paused = false; p.status = 'running'; showToast(`${p.name} resumed (SIGCONT)`, 'success', 'â–¶'); renderTable(); }
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  FILTER & SORT
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function setFilter(f, btn) {
       currentFilter = f;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -2535,10 +2587,10 @@
       renderTable();
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  TOASTS
-    // ─────────────────────────────────────────────
-    function showToast(msg, type = 'info', icon = 'ℹ') {
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    function showToast(msg, type = 'info', icon = 'â„¹') {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
@@ -2562,19 +2614,19 @@
 
     function triggerAlert() {
       const msgs = [
-        'Memory usage exceeded 85% — consider restarting <strong>java (PID 2341)</strong>',
-        'Zombie process detected: <strong>strace (PID 1591)</strong> — parent not reaping',
-        'Disk I/O wait spike on /dev/sda1 — possible bottleneck',
+        'Memory usage exceeded 85% â€” consider restarting <strong>java (PID 2341)</strong>',
+        'Zombie process detected: <strong>strace (PID 1591)</strong> â€” parent not reaping',
+        'Disk I/O wait spike on /dev/sda1 â€” possible bottleneck',
         'Network RX dropped packets detected on eth0',
-        'Load average exceeded 2.0 — system under pressure',
+        'Load average exceeded 2.0 â€” system under pressure',
       ];
       showAlert(msgs[Math.floor(Math.random() * msgs.length)]);
-      showToast('New system alert generated', 'warn', '⚡');
+      showToast('New system alert generated', 'warn', 'âš¡');
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  NAV TABS
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     function setTab(el, target) {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
@@ -2598,22 +2650,22 @@
       }
     }
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  ALERT GRAD (for high CPU)
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const svg = document.querySelector('svg');
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     defs.innerHTML = `<linearGradient id="alertGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-  <stop offset="0%" stop-color="#ff3d5a"/>
-  <stop offset="100%" stop-color="#ffaa00"/>
+  <stop offset="0%" stop-color="#F87171"/>
+  <stop offset="100%" stop-color="#FBBF24"/>
 </linearGradient>`;
     if (svg) svg.appendChild(defs);
 
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  BOOT SEQUENCE
-    // ─────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     window.addEventListener('load', () => {
-      // FIX: No fake random data — histories start at 0 and fill with real values
+      // FIX: No fake random data â€” histories start at 0 and fill with real values
       renderTable();
       updateClock();
       setInterval(updateClock, 1000);
@@ -2625,8 +2677,8 @@
       connectWebSocket();
 
       // Startup toasts
-      setTimeout(() => showToast('SysVision OS Dashboard initialized', 'success', '✅'), 500);
-      setTimeout(() => showToast('60fps render engine active', 'info', '📡'), 1200);
+      setTimeout(() => showToast('SysVision OS Dashboard initialized', 'success', 'âœ…'), 500);
+      setTimeout(() => showToast('60fps render engine active', 'info', 'ðŸ“¡'), 1200);
     });
 
     // Close modal on overlay click
