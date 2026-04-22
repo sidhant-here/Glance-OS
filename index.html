@@ -785,7 +785,8 @@
     .group-child td {
       background: rgba(0, 0, 0, 0.2) !important;
     }
-    body.light-mode .group-child td {
+    body.light-mode .group-child td,
+    body.cyan-mode .group-child td {
       background: rgba(0, 0, 0, 0.03) !important;
     }
     .group-child .name-cell {
@@ -1246,8 +1247,35 @@
       color: var(--accent-green);
     }
     
-    /* ── THEME TOGGLE ── */
+    /* ── THEME: WHITE (day mode from toggle) ── */
     body.light-mode {
+      --bg-base: #f0f2f5;
+      --bg-panel: #f7f8fa;
+      --bg-card: #ffffff;
+      --bg-hover: #e8eaef;
+      --border: #d5d9e0;
+      --border-glow: #b0b8c4;
+      --text-primary: #1a1a2e;
+      --text-secondary: #555770;
+      --text-dim: #8e93a6;
+      
+      --accent-cyan: #0284c7;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --accent-red: #e11d48;
+      --accent-purple: #7c3aed;
+
+      --glow-cyan: 0 0 15px rgba(2, 132, 199, 0.15);
+      --glow-green: 0 0 15px rgba(5, 150, 105, 0.15);
+      --glow-red: 0 0 15px rgba(225, 29, 72, 0.2);
+    }
+    body.light-mode::before { opacity: 0.06; filter: invert(1); }
+    body.light-mode::after {
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.015) 2px, rgba(0, 0, 0, 0.015) 4px);
+    }
+
+    /* ── THEME: CYAN (from cyan button) ── */
+    body.cyan-mode {
       --bg-base: #e0f7fa;
       --bg-panel: #e8fafb;
       --bg-card: #f0fdff;
@@ -1268,18 +1296,100 @@
       --glow-green: 0 0 15px rgba(0, 137, 123, 0.15);
       --glow-red: 0 0 15px rgba(229, 57, 53, 0.2);
     }
-    body.light-mode::before { opacity: 0.08; filter: invert(1); }
-    body.light-mode::after {
+    body.cyan-mode::before { opacity: 0.08; filter: invert(1); }
+    body.cyan-mode::after {
       background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 172, 193, 0.02) 2px, rgba(0, 172, 193, 0.02) 4px);
     }
     
     /* ── SEPARATE THEME BUTTONS ── */
     .theme-buttons {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
 
+    /* ── DAY/NIGHT PILL TOGGLE ── */
+    .day-night-toggle {
+      width: 72px;
+      height: 34px;
+      border-radius: 17px;
+      background: #1a1f35;
+      cursor: pointer;
+      position: relative;
+      border: 1.5px solid #2d3a55;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.4s, border-color 0.4s;
+      overflow: hidden;
+    }
+    /* Stars inside toggle (dark state) */
+    .toggle-stars {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.4s;
+    }
+    .toggle-stars .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.7;
+    }
+    .toggle-stars .star:nth-child(1) { top: 8px; left: 12px; width: 2px; height: 2px; }
+    .toggle-stars .star:nth-child(2) { top: 14px; left: 22px; width: 1.5px; height: 1.5px; opacity: 0.5; }
+    .toggle-stars .star:nth-child(3) { top: 6px; left: 30px; width: 2.5px; height: 2.5px; }
+    .toggle-stars .star:nth-child(4) { top: 20px; left: 16px; width: 1.5px; height: 1.5px; opacity: 0.4; }
+    .toggle-stars .star:nth-child(5) { top: 22px; left: 34px; width: 2px; height: 2px; opacity: 0.6; }
+    .toggle-stars .star:nth-child(6) { top: 10px; left: 40px; width: 1.5px; height: 1.5px; opacity: 0.5; }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s, box-shadow 0.4s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Moon thumb (dark/night state) */
+    .toggle-thumb {
+      background: #c8cdd5;
+      box-shadow: inset -3px -2px 0px #9ba3ae, 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .toggle-thumb .crater {
+      position: absolute;
+      border-radius: 50%;
+      background: #a8aeb8;
+    }
+    .toggle-thumb .crater:nth-child(1) { width: 8px; height: 8px; top: 6px; left: 10px; }
+    .toggle-thumb .crater:nth-child(2) { width: 5px; height: 5px; top: 14px; left: 6px; }
+    .toggle-thumb .crater:nth-child(3) { width: 4px; height: 4px; top: 4px; left: 5px; opacity: 0.6; }
+
+    /* Day/Light state */
+    .day-night-toggle.day {
+      background: #87ceeb;
+      border-color: #6bb8d9;
+    }
+    .day-night-toggle.day .toggle-stars { opacity: 0; }
+    .day-night-toggle.day .toggle-thumb {
+      left: calc(100% - 30px);
+      background: #ffd93d;
+      box-shadow: 0 0 10px rgba(255, 217, 61, 0.5), 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .day-night-toggle.day .toggle-thumb .crater { opacity: 0; }
+
+    /* Light/cyan mode context overrides for toggle */
+    body.light-mode .day-night-toggle:not(.day),
+    body.cyan-mode .day-night-toggle:not(.day) {
+      background: #1a1f35;
+      border-color: #2d3a55;
+    }
+
+    /* ── CYAN THEME BUTTON ── */
     .theme-btn {
       width: 38px;
       height: 38px;
@@ -1305,83 +1415,45 @@
       transition: all 0.3s;
     }
 
-    /* Dark mode button */
-    .theme-btn-dark {
-      background: #1a1f2e;
-      border-color: #2d3548;
-    }
-    .theme-btn-dark svg {
-      stroke: #e8f0fe;
-    }
-    .theme-btn-dark.active {
-      background: #111827;
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25), inset 0 0 8px rgba(0, 229, 255, 0.08);
-    }
-    .theme-btn-dark:hover:not(.active) {
-      border-color: #4a5568;
-      background: #232b3a;
-    }
-
-    /* Light mode button */
-    .theme-btn-light {
+    .theme-btn-cyan {
       background: #f0f4f8;
       border-color: #d1d9e6;
     }
-    .theme-btn-light svg {
+    .theme-btn-cyan svg {
       stroke: #334155;
     }
-    .theme-btn-light.active {
-      background: #ffffff;
+    .theme-btn-cyan.active {
+      background: #e0f7fa;
       border-color: #00acc1;
       box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
     }
-    .theme-btn-light:hover:not(.active) {
+    .theme-btn-cyan.active svg {
+      stroke: #00838f;
+    }
+    .theme-btn-cyan:hover:not(.active) {
       border-color: #a0b0c0;
       background: #e8ecf0;
     }
 
-    /* In dark mode context */
-    .theme-btn-dark.active ~ .theme-btn-light,
-    body:not(.light-mode) .theme-btn-light {
+    /* Cyan button in dark mode context */
+    body:not(.light-mode):not(.cyan-mode) .theme-btn-cyan {
       background: #1e2535;
       border-color: #2d3548;
     }
-    body:not(.light-mode) .theme-btn-light svg {
+    body:not(.light-mode):not(.cyan-mode) .theme-btn-cyan svg {
       stroke: #64748b;
     }
-    body:not(.light-mode) .theme-btn-light:hover {
+    body:not(.light-mode):not(.cyan-mode) .theme-btn-cyan:hover {
       border-color: #4a5568;
       background: #252d3e;
     }
-
-    /* In light mode context */
-    body.light-mode .theme-btn-dark {
-      background: #e0f2f4;
-      border-color: #b2ebf2;
-    }
-    body.light-mode .theme-btn-dark svg {
-      stroke: #3a7c8c;
-    }
-    body.light-mode .theme-btn-dark:hover:not(.active) {
-      border-color: #80deea;
-      background: #ccecf0;
-    }
-    body.light-mode .theme-btn-dark.active {
+    body:not(.light-mode):not(.cyan-mode) .theme-btn-cyan.active {
       background: #111827;
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
+      border-color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25), inset 0 0 8px rgba(0, 229, 255, 0.08);
     }
-    body.light-mode .theme-btn-dark.active svg {
-      stroke: #e8f0fe;
-    }
-    body.light-mode .theme-btn-light.active {
-      background: #ffffff;
-      border-color: #00acc1;
-      box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
-    }
-    body.light-mode .theme-btn-light.active svg {
-      stroke: #00838f;
+    body:not(.light-mode):not(.cyan-mode) .theme-btn-cyan.active svg {
+      stroke: #00e5ff;
     }
 
     /* ── PER-CORE CPU BARS ── */
@@ -1485,10 +1557,22 @@
       </div>
       <div class="clock" id="clock">--:--:--</div>
       <div class="theme-buttons">
-        <button class="theme-btn theme-btn-dark" id="btnDark" onclick="setTheme('dark')" title="Dark Mode">
-          <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-        <button class="theme-btn theme-btn-light active" id="btnLight" onclick="setTheme('light')" title="Light Mode">
+        <div class="day-night-toggle day" id="dayNightToggle" onclick="toggleDayNight()" title="Toggle Day/Night">
+          <div class="toggle-stars">
+            <span class="star"></span>
+            <span class="star"></span>
+            <span class="star"></span>
+            <span class="star"></span>
+            <span class="star"></span>
+            <span class="star"></span>
+          </div>
+          <div class="toggle-thumb">
+            <span class="crater"></span>
+            <span class="crater"></span>
+            <span class="crater"></span>
+          </div>
+        </div>
+        <button class="theme-btn theme-btn-cyan" id="btnCyan" onclick="setTheme('cyan')" title="Cyan Theme">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
       </div>
@@ -1949,18 +2033,44 @@
     let lastMemAlertTime = 0;
     const ALERT_COOLDOWN_MS = 30000;
 
-    // ── Theme toggle (separate buttons) ──
-    function setTheme(mode) {
-      const btnDark = document.getElementById('btnDark');
-      const btnLight = document.getElementById('btnLight');
-      if (mode === 'light') {
-        document.body.classList.add('light-mode');
-        btnDark.classList.remove('active');
-        btnLight.classList.add('active');
-      } else {
+    // ── Theme toggle (day/night + cyan) ──
+    function toggleDayNight() {
+      const toggle = document.getElementById('dayNightToggle');
+      const btnCyan = document.getElementById('btnCyan');
+      const isDay = toggle.classList.contains('day');
+      // Remove cyan if active
+      document.body.classList.remove('cyan-mode');
+      btnCyan.classList.remove('active');
+      if (isDay) {
+        // Switch to night/dark
+        toggle.classList.remove('day');
         document.body.classList.remove('light-mode');
-        btnDark.classList.add('active');
-        btnLight.classList.remove('active');
+      } else {
+        // Switch to day/white
+        toggle.classList.add('day');
+        document.body.classList.add('light-mode');
+      }
+    }
+
+    function setTheme(mode) {
+      if (mode === 'cyan') {
+        const btnCyan = document.getElementById('btnCyan');
+        const toggle = document.getElementById('dayNightToggle');
+        const isActive = btnCyan.classList.contains('active');
+        if (isActive) {
+          // Turn off cyan, revert to toggle state
+          document.body.classList.remove('cyan-mode');
+          btnCyan.classList.remove('active');
+          if (toggle.classList.contains('day')) {
+            document.body.classList.add('light-mode');
+          }
+        } else {
+          // Activate cyan mode
+          document.body.classList.remove('light-mode');
+          document.body.classList.add('cyan-mode');
+          toggle.classList.add('day');
+          btnCyan.classList.add('active');
+        }
       }
     }
 
