@@ -1248,98 +1248,141 @@
     
     /* ── THEME TOGGLE ── */
     body.light-mode {
-      --bg-base: #e6e9ef;
-      --bg-panel: #f0f3f8;
-      --bg-card: #ffffff;
-      --bg-hover: #dfe4eb;
-      --border: #d1d9e6;
-      --border-glow: #a3b8cc;
-      --text-primary: #1e293b;
-      --text-secondary: #64748b;
-      --text-dim: #94a3b8;
+      --bg-base: #e0f7fa;
+      --bg-panel: #e8fafb;
+      --bg-card: #f0fdff;
+      --bg-hover: #ccf2f6;
+      --border: #b2ebf2;
+      --border-glow: #80deea;
+      --text-primary: #0e3a47;
+      --text-secondary: #3a7c8c;
+      --text-dim: #7fb8c7;
       
-      --accent-cyan: #0284c7;
-      --accent-green: #059669;
-      --accent-amber: #d97706;
-      --accent-red: #e11d48;
+      --accent-cyan: #00acc1;
+      --accent-green: #00897b;
+      --accent-amber: #f9a825;
+      --accent-red: #e53935;
       --accent-purple: #7c3aed;
 
-      --glow-cyan: 0 0 15px rgba(2, 132, 199, 0.15);
-      --glow-green: 0 0 15px rgba(5, 150, 105, 0.15);
-      --glow-red: 0 0 15px rgba(225, 29, 72, 0.2);
+      --glow-cyan: 0 0 18px rgba(0, 172, 193, 0.2);
+      --glow-green: 0 0 15px rgba(0, 137, 123, 0.15);
+      --glow-red: 0 0 15px rgba(229, 57, 53, 0.2);
     }
-    body.light-mode::before { opacity: 0.1; filter: invert(1); }
+    body.light-mode::before { opacity: 0.08; filter: invert(1); }
     body.light-mode::after {
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 172, 193, 0.02) 2px, rgba(0, 172, 193, 0.02) 4px);
     }
     
-    .theme-switch {
-      width: 90px;
-      height: 36px;
-      border-radius: 18px;
-      background: #2a303c;
+    /* ── SEPARATE THEME BUTTONS ── */
+    .theme-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .theme-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
       cursor: pointer;
-      position: relative;
-      box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05);
-      user-select: none;
-      border: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body.light-mode .theme-switch {
-      background: #e9ecef;
-      box-shadow: inset 3px 3px 6px #c8d0d8, inset -3px -3px 6px #ffffff;
-    }
-
-    .theme-text {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 9px;
-      font-weight: 800;
-      line-height: 1.1;
-      text-align: center;
-      color: #64748b;
-      transition: opacity 0.3s;
-      letter-spacing: 0.05em;
-    }
-    .text-dark { left: 12px; }
-    .text-light { right: 12px; opacity: 0; color: #94a3b8; }
-    body.light-mode .text-dark { opacity: 0; }
-    body.light-mode .text-light { opacity: 1; }
-
-    .theme-thumb {
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      background: #394251;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.4), -1px -1px 3px rgba(255,255,255,0.05);
-      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s, box-shadow 0.3s;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    body.light-mode .theme-thumb {
-      left: calc(100% - 33px);
-      background: #ffffff;
-      box-shadow: 2px 2px 5px #c8d0d8, -2px -2px 5px #ffffff;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      overflow: hidden;
     }
 
-    .icon-sun, .icon-moon { 
-      width: 14px; height: 14px; 
-      position: absolute; 
-      transition: opacity 0.3s; 
-      stroke: #94a3b8; 
-      fill: none; 
-      stroke-width: 2.5; 
-      stroke-linecap: round; 
-      stroke-linejoin: round; 
+    .theme-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      transition: all 0.3s;
     }
-    .icon-sun { opacity: 0; stroke: #64748b; }
-    body.light-mode .icon-sun { opacity: 1; }
-    body.light-mode .icon-moon { opacity: 0; }
+
+    /* Dark mode button */
+    .theme-btn-dark {
+      background: #1a1f2e;
+      border-color: #2d3548;
+    }
+    .theme-btn-dark svg {
+      stroke: #e8f0fe;
+    }
+    .theme-btn-dark.active {
+      background: #111827;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25), inset 0 0 8px rgba(0, 229, 255, 0.08);
+    }
+    .theme-btn-dark:hover:not(.active) {
+      border-color: #4a5568;
+      background: #232b3a;
+    }
+
+    /* Light mode button */
+    .theme-btn-light {
+      background: #f0f4f8;
+      border-color: #d1d9e6;
+    }
+    .theme-btn-light svg {
+      stroke: #334155;
+    }
+    .theme-btn-light.active {
+      background: #ffffff;
+      border-color: #00acc1;
+      box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
+    }
+    .theme-btn-light:hover:not(.active) {
+      border-color: #a0b0c0;
+      background: #e8ecf0;
+    }
+
+    /* In dark mode context */
+    .theme-btn-dark.active ~ .theme-btn-light,
+    body:not(.light-mode) .theme-btn-light {
+      background: #1e2535;
+      border-color: #2d3548;
+    }
+    body:not(.light-mode) .theme-btn-light svg {
+      stroke: #64748b;
+    }
+    body:not(.light-mode) .theme-btn-light:hover {
+      border-color: #4a5568;
+      background: #252d3e;
+    }
+
+    /* In light mode context */
+    body.light-mode .theme-btn-dark {
+      background: #e0f2f4;
+      border-color: #b2ebf2;
+    }
+    body.light-mode .theme-btn-dark svg {
+      stroke: #3a7c8c;
+    }
+    body.light-mode .theme-btn-dark:hover:not(.active) {
+      border-color: #80deea;
+      background: #ccecf0;
+    }
+    body.light-mode .theme-btn-dark.active {
+      background: #111827;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
+    }
+    body.light-mode .theme-btn-dark.active svg {
+      stroke: #e8f0fe;
+    }
+    body.light-mode .theme-btn-light.active {
+      background: #ffffff;
+      border-color: #00acc1;
+      box-shadow: 0 0 12px rgba(0, 172, 193, 0.25), inset 0 0 8px rgba(0, 172, 193, 0.08);
+    }
+    body.light-mode .theme-btn-light.active svg {
+      stroke: #00838f;
+    }
 
     /* ── PER-CORE CPU BARS ── */
     .per-core-section {
@@ -1441,13 +1484,13 @@
         LIVE
       </div>
       <div class="clock" id="clock">--:--:--</div>
-      <div class="theme-switch" onclick="document.body.classList.toggle('light-mode')">
-        <div class="theme-text text-dark">DARK<br>MODE</div>
-        <div class="theme-text text-light">LIGHT<br>MODE</div>
-        <div class="theme-thumb">
-          <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </div>
+      <div class="theme-buttons">
+        <button class="theme-btn theme-btn-dark active" id="btnDark" onclick="setTheme('dark')" title="Dark Mode">
+          <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="theme-btn theme-btn-light" id="btnLight" onclick="setTheme('light')" title="Light Mode">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
       </div>
       <button class="header-btn" onclick="triggerAlert()">⚠ Force Alert</button>
     </div>
@@ -1905,6 +1948,21 @@
     let lastCpuAlertTime = 0;
     let lastMemAlertTime = 0;
     const ALERT_COOLDOWN_MS = 30000;
+
+    // ── Theme toggle (separate buttons) ──
+    function setTheme(mode) {
+      const btnDark = document.getElementById('btnDark');
+      const btnLight = document.getElementById('btnLight');
+      if (mode === 'light') {
+        document.body.classList.add('light-mode');
+        btnDark.classList.remove('active');
+        btnLight.classList.add('active');
+      } else {
+        document.body.classList.remove('light-mode');
+        btnDark.classList.add('active');
+        btnLight.classList.remove('active');
+      }
+    }
 
     // ─────────────────────────────────────────────
     //  SMOOTH INTERPOLATION ENGINE (60fps)
