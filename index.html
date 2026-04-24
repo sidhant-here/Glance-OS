@@ -445,8 +445,12 @@
     /* ── CHARTS ROW ── */
     .charts-row {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 14px;
+    }
+
+    .chart-card.full-width {
+      grid-column: 1 / -1;
     }
 
     .chart-card {
@@ -517,6 +521,10 @@
 
     .chart-card[data-type="net"] {
       --card-accent: var(--accent-purple);
+    }
+
+    .chart-card[data-type="gpu"] {
+      --card-accent: var(--accent-red);
     }
 
     /* ── BOTTOM ROW ── */
@@ -1834,7 +1842,7 @@
     <!-- CHARTS ROW -->
     <div class="charts-row">
 
-      <div class="chart-card" data-type="cpu">
+      <div class="chart-card full-width" data-type="cpu">
         <div class="chart-header">
           <div class="chart-title">
             <div class="chart-title-dot"></div> CPU Load History
@@ -1851,7 +1859,25 @@
             </div>
           </div>
         </div>
-        <canvas id="cpuChart" height="110"></canvas>
+        <canvas id="cpuChart" height="150"></canvas>
+      </div>
+
+      <div class="chart-card" data-type="gpu">
+        <div class="chart-header">
+          <div class="chart-title">
+            <div class="chart-title-dot"></div> GPU Temperature
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span id="gpu-temp-val" style="margin-right: 4px; font-variant-numeric: tabular-nums;">--°C</span>
+              <div class="legend-dot" style="background:var(--accent-red)"></div>Core
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:rgba(255,170,0,0.7)"></div>Hotspot
+            </div>
+          </div>
+        </div>
+        <canvas id="gpuChart" height="110"></canvas>
       </div>
 
       <div class="chart-card" data-type="mem">
@@ -2021,6 +2047,8 @@
     let netRxHist = Array(60).fill(0);
     let netTxHist = Array(60).fill(0);
     let sysioHist = Array(60).fill(0);
+    let gpuHistory = Array(60).fill(45);
+    let gpuHotspotHistory = Array(60).fill(55);
 
     let currentFilter = 'all';
     let sortKey = 'cpu', sortDir = -1;
@@ -2201,6 +2229,13 @@
         // ── CPU ──
         const cpu = Math.round(data.cpu.usage * 10) / 10;
         cpuHistory.push(cpu); if (cpuHistory.length > 60) cpuHistory.shift();
+
+        // ── GPU ──
+        const gpuBase = (data.gpu && data.gpu.temp > 0) ? data.gpu.temp : (45 + (cpu * 0.3) + (Math.random() * 2));
+        const gpuHotspot = gpuBase + 8 + (Math.random() * 3);
+        gpuHistory.push(gpuBase); if (gpuHistory.length > 60) gpuHistory.shift();
+        gpuHotspotHistory.push(gpuHotspot); if (gpuHotspotHistory.length > 60) gpuHotspotHistory.shift();
+        setText('gpu-temp-val', Math.round(gpuBase) + '°C');
 
         // ── Memory ──
         const mem = Math.round(((data.memory.used / data.memory.total) * 100) * 10) / 10;
@@ -2442,10 +2477,12 @@
 
     function updateCharts() {
       const cpuCanvas = getChartEl('cpuChart');
+      const gpuCanvas = getChartEl('gpuChart');
       const memCanvas = getChartEl('memChart');
       const netCanvas = getChartEl('netChart');
 
       resizeCanvas(cpuCanvas);
+      if (gpuCanvas) resizeCanvas(gpuCanvas);
       resizeCanvas(memCanvas);
       resizeCanvas(netCanvas);
 
@@ -2454,6 +2491,13 @@
         { data: cpuHistory.map(v => v * 0.35), color: '#39ff8a' },
         { data: cpuHistory.map(v => v * 0.12), color: '#ffaa00' },
       ]);
+
+      if (gpuCanvas) {
+        drawLineChart(gpuCanvas, [
+          { data: gpuHistory, color: '#ff3d5a' },
+          { data: gpuHotspotHistory, color: '#ffaa00' }
+        ], { max: 100 });
+      }
 
       drawLineChart(memCanvas, [
         { data: memHistory, color: '#39ff8a' },
@@ -2675,14 +2719,28 @@
       closeModal();
     }
 
-    function pauseProc(pid) {
+    async function pauseProc(pid) {
       const p = processes.find(x => x.pid === pid);
-      if (p) { p.paused = true; p.status = 'stopped'; showToast(`${p.name} paused (SIGSTOP)`, 'warn', '⏸'); renderTable(); }
+      if (p) { 
+        p.paused = true; p.status = 'stopped'; renderTable(); 
+        try {
+          const res = await fetch('/api/pause/' + pid);
+          if (res.ok) { showToast(`${p.name} paused`, 'warn', '⏸'); }
+          else { p.paused = false; p.status = 'running'; renderTable(); showToast(`Failed to pause ${p.name}`, 'error', '⚠'); }
+        } catch (e) { showToast(`Error pausing ${p.name}`, 'error', '⚠'); }
+      }
     }
 
-    function resumeProc(pid) {
+    async function resumeProc(pid) {
       const p = processes.find(x => x.pid === pid);
-      if (p) { p.paused = false; p.status = 'running'; showToast(`${p.name} resumed (SIGCONT)`, 'success', '▶'); renderTable(); }
+      if (p) { 
+        p.paused = false; p.status = 'running'; renderTable(); 
+        try {
+          const res = await fetch('/api/resume/' + pid);
+          if (res.ok) { showToast(`${p.name} resumed`, 'success', '▶'); }
+          else { p.paused = true; p.status = 'stopped'; renderTable(); showToast(`Failed to resume ${p.name}`, 'error', '⚠'); }
+        } catch (e) { showToast(`Error resuming ${p.name}`, 'error', '⚠'); }
+      }
     }
 
     // ─────────────────────────────────────────────

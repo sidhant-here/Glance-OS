@@ -53,6 +53,7 @@ let osInfoCache = null;
 
 // Cached process list (expensive — refresh every 2s)
 let processCache = { all: 0, list: [] };
+let pausedPids = new Set();
 
 // Clamp helper
 function clamp(v, lo = 0, hi = 100) { return Math.max(lo, Math.min(hi, v)); }
@@ -108,6 +109,23 @@ function updateNetConnections() {
 }
 updateNetConnections();
 setInterval(updateNetConnections, 5000);
+
+// ─────────────────────────────────────────────
+//  GPU METRICS (refresh every 2s)
+// ─────────────────────────────────────────────
+let gpuTemp = 40;
+let gpuLoad = 0;
+function updateGpuMetrics() {
+    si.graphics().then(data => {
+        if (data && data.controllers) {
+            const gpu = data.controllers.find(c => (c.vendor || '').toLowerCase().includes('nvidia')) || data.controllers[0];
+            if (gpu.temperatureGpu !== undefined && gpu.temperatureGpu !== null) gpuTemp = gpu.temperatureGpu;
+            if (gpu.utilizationGpu !== undefined && gpu.utilizationGpu !== null) gpuLoad = gpu.utilizationGpu;
+        }
+    }).catch(() => {});
+}
+updateGpuMetrics();
+setInterval(updateGpuMetrics, 2000);
 
 // ─────────────────────────────────────────────
 //  POWERSHELL TELEMETRY STREAM (Windows only)
@@ -204,7 +222,9 @@ function buildStateResponse() {
     const processes = processCache;
     const mappedProcs = (processes.list || []).map(p => {
         let st = p.state === 'running' ? 'Running' : (p.state === 'sleeping' ? 'Sleeping' : (p.state === 'stopped' ? 'Stopped' : 'Unknown'));
-        if (st === 'Unknown' && p.cpu > 0) {
+        if (pausedPids.has(p.pid)) {
+           st = 'Stopped';
+        } else if (st === 'Unknown' && p.cpu > 0) {
            st = 'Running';
         } else if (st === 'Unknown') {
            st = 'Sleeping';
@@ -265,6 +285,10 @@ function buildStateResponse() {
             total: Math.round((swapTotal / (1024 * 1024 * 1024)) * 10) / 10,
             used: Math.round((swapUsed / (1024 * 1024 * 1024)) * 10) / 10,
           }
+        },
+        gpu: {
+          temp: gpuTemp,
+          load: gpuLoad
         },
         disk: {
           total: diskTotal,
@@ -374,6 +398,7 @@ export default defineConfig({
             const pidMatch = req.url.match(/\/api\/kill\/(\d+)/);
             if (pidMatch) {
               const pid = parseInt(pidMatch[1], 10);
+              pausedPids.delete(pid);
               const cmd = isWindows ? `taskkill /F /PID ${pid}` : `kill -9 ${pid}`;
               
               exec(cmd, (err) => {
@@ -382,6 +407,29 @@ export default defineConfig({
                   res.statusCode = 500;
                   res.end(JSON.stringify({ success: false, error: err.message }));
                 } else {
+                  res.end(JSON.stringify({ success: true }));
+                }
+              });
+            } else {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Invalid PID' }));
+            }
+          } else if (req.url.startsWith('/api/pause/') || req.url.startsWith('/api/resume/')) {
+            const isPause = req.url.startsWith('/api/pause/');
+            const action = isPause ? 'pause' : 'resume';
+            const pidMatch = req.url.match(new RegExp(`/api/${action}/(\\d+)`));
+            if (pidMatch) {
+              const pid = parseInt(pidMatch[1], 10);
+              const cmd = isWindows ? `powershell -NoProfile -ExecutionPolicy Bypass -File "${path.join(process.cwd(), 'suspend.ps1')}" -Action ${action} -ProcessId ${pid}` : `kill -${isPause ? 'STOP' : 'CONT'} ${pid}`;
+              
+              exec(cmd, (err) => {
+                res.setHeader('Content-Type', 'application/json');
+                if (err && isWindows) {
+                  res.statusCode = 500;
+                  res.end(JSON.stringify({ success: false, error: err.message }));
+                } else {
+                  if (isPause) pausedPids.add(pid);
+                  else pausedPids.delete(pid);
                   res.end(JSON.stringify({ success: true }));
                 }
               });
