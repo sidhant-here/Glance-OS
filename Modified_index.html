@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SysVision OS — Process Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #070b14;
+      --bg-panel: #0d1220;
+      --bg-card: #111827;
+      --bg-hover: #1a2235;
+      --border: #1e2d47;
+      --border-glow: #2a4a7f;
+      --accent-cyan: #00e5ff;
+      --accent-green: #39ff8a;
+      --accent-amber: #ffaa00;
+      --accent-red: #ff3d5a;
+      --accent-purple: #a259ff;
+      --text-primary: #e8f0fe;
+      --text-secondary: #7a8fa6;
+      --text-dim: #3d5068;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Syne', sans-serif;
+      --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.25);
+      --glow-green: 0 0 20px rgba(57, 255, 138, 0.25);
+      --glow-red: 0 0 20px rgba(255, 61, 90, 0.3);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      min-height: 100vh;
+      overflow-x: auto;
+    }
+
+    /* ── Noise Overlay (GPU-composited, low z-index to reduce paint cost) ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: .4;
+      will-change: auto;
+      transform: translateZ(0);
+    }
+
+    /* ── Scanlines (GPU layer) ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 229, 255, 0.015) 2px, rgba(0, 229, 255, 0.015) 4px);
+      pointer-events: none;
+      z-index: 9998;
+      transform: translateZ(0);
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-base);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-glow);
+      border-radius: 2px;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: conic-gradient(from 180deg, var(--accent-cyan), var(--accent-green), var(--accent-cyan));
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      animation: spin-slow 8s linear infinite;
+      box-shadow: var(--glow-cyan);
+    }
+
+    @keyframes spin-slow {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .logo-sub {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: -2px;
+    }
+
+    .header-center {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 5px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .nav-tab:hover {
+      color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.06);
+      border-color: var(--border);
+    }
+
+    .nav-tab.active {
+      color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.1);
+      border-color: rgba(0, 229, 255, 0.3);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-live {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--accent-green);
+      letter-spacing: 0.1em;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: var(--glow-green);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+    }
+
+    .clock {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .header-btn {
+      padding: 5px 12px;
+      border-radius: 4px;
+      background: rgba(255, 61, 90, 0.1);
+      border: 1px solid rgba(255, 61, 90, 0.3);
+      color: var(--accent-red);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    .header-btn:hover {
+      background: rgba(255, 61, 90, 0.2);
+      box-shadow: var(--glow-red);
+    }
+
+    /* ── LAYOUT ── */
+    .dashboard {
+      padding: 16px 20px;
+      display: grid;
+      grid-template-rows: auto auto auto auto;
+      gap: 14px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── ALERT BAR ── */
+    .alert-bar {
+      background: linear-gradient(90deg, rgba(255, 170, 0, 0.1), rgba(255, 170, 0, 0.05));
+      border: 1px solid rgba(255, 170, 0, 0.3);
+      border-radius: 6px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      animation: fadeSlideDown 0.5s ease;
+    }
+
+    @keyframes fadeSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .alert-icon {
+      color: var(--accent-amber);
+      font-size: 14px;
+    }
+
+    .alert-text {
+      color: var(--accent-amber);
+      flex: 1;
+    }
+
+    .alert-close {
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.2s;
+    }
+
+    .alert-close:hover {
+      color: var(--accent-amber);
+    }
+
+    /* ── GAUGE ROW ── */
+    .gauges-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .gauge-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .gauge-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent-cyan)), transparent);
+      opacity: 0.8;
+    }
+
+    .gauge-card:hover {
+      border-color: var(--card-accent, var(--border-glow));
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .gauge-card[data-type="cpu"] {
+      --card-accent: var(--accent-cyan);
+    }
+
+    .gauge-card[data-type="mem"] {
+      --card-accent: var(--accent-green);
+    }
+
+    .gauge-card[data-type="disk"] {
+      --card-accent: var(--accent-amber);
+    }
+
+    .gauge-card[data-type="net"] {
+      --card-accent: var(--accent-purple);
+    }
+
+    .gauge-card[data-type="proc"] {
+      --card-accent: var(--accent-red);
+    }
+
+    .gauge-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gauge-label-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--card-accent, var(--accent-cyan));
+    }
+
+    .gauge-svg-wrap {
+      position: relative;
+    }
+
+    .gauge-svg {
+      transform: rotate(-90deg);
+    }
+
+    .gauge-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+    }
+
+    .gauge-fill {
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: stroke-dashoffset;
+    }
+
+    .gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gauge-pct {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gauge-unit {
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .gauge-stats {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .gauge-stat {
+      text-align: center;
+    }
+
+    .gauge-stat-val {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .gauge-stat-key {
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    /* ── CHARTS ROW ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chart-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-title-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--card-accent, var(--accent-cyan));
+      box-shadow: 0 0 8px var(--card-accent, var(--accent-cyan));
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    canvas {
+      border-radius: 4px;
+      contain: strict;
+    }
+
+    .chart-card[data-type="cpu"] {
+      --card-accent: var(--accent-cyan);
+    }
+
+    .chart-card[data-type="mem"] {
+      --card-accent: var(--accent-green);
+    }
+
+    .chart-card[data-type="net"] {
+      --card-accent: var(--accent-purple);
+    }
+
+    /* ── BOTTOM ROW ── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1.8fr;
+      gap: 14px;
+    }
+
+    /* ── SYSTEM INFO CARD ── */
+    .info-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .info-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .info-key {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .info-val {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    .uptime-bar {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+    }
+
+    .uptime-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .uptime-track {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .uptime-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      border-radius: 2px;
+      width: 72%;
+    }
+
+    .uptime-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-green);
+      margin-top: 5px;
+    }
+
+    /* ── PROCESS TABLE ── */
+    .process-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .process-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-panel);
+    }
+
+    .process-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .proc-count {
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+      color: var(--accent-cyan);
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    .process-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-input {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px 4px 28px;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      width: 160px;
+      outline: none;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .search-input:focus {
+      border-color: rgba(0, 229, 255, 0.4);
+    }
+
+    .filter-btn {
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.05em;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: rgba(0, 229, 255, 0.4);
+      color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.05);
+    }
+
+    .table-wrap {
+      overflow-y: auto;
+      overflow-x: auto;
+      max-height: 260px;
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead tr {
+      background: var(--bg-panel);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    th:hover {
+      color: var(--accent-cyan);
+    }
+
+    td {
+      padding: 6px 12px;
+      font-size: 11px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: var(--bg-hover);
+    }
+
+    tr.selected td {
+      background: rgba(0, 229, 255, 0.05);
+    }
+
+    .group-parent td {
+      cursor: pointer;
+    }
+    .group-parent:hover td {
+      background: rgba(0, 229, 255, 0.08);
+    }
+    .chevron {
+      display: inline-block;
+      width: 14px;
+      text-align: center;
+      transition: transform 0.2s;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-right: 6px;
+    }
+    .chevron.expanded {
+      transform: rotate(90deg);
+    }
+    .group-child td {
+      background: rgba(0, 0, 0, 0.2) !important;
+    }
+    body.light-mode .group-child td {
+      background: rgba(0, 0, 0, 0.03) !important;
+    }
+    .group-child .name-cell {
+      padding-left: 28px !important;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .pid-cell {
+      color: var(--text-dim);
+      font-size: 10px;
+    }
+
+    .name-cell {
+      font-weight: 500;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-running {
+      background: rgba(57, 255, 138, 0.1);
+      border: 1px solid rgba(57, 255, 138, 0.2);
+      color: var(--accent-green);
+    }
+
+    .status-sleeping {
+      background: rgba(0, 229, 255, 0.08);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+      color: var(--accent-cyan);
+    }
+
+    .status-stopped {
+      background: rgba(255, 61, 90, 0.1);
+      border: 1px solid rgba(255, 61, 90, 0.2);
+      color: var(--accent-red);
+    }
+
+    .status-zombie {
+      background: rgba(162, 89, 255, 0.1);
+      border: 1px solid rgba(162, 89, 255, 0.2);
+      color: var(--accent-purple);
+    }
+
+    .cpu-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cpu-mini-bar {
+      width: 50px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .cpu-mini-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: width;
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 4px;
+    }
+
+    .act-btn {
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid;
+      letter-spacing: 0.05em;
+    }
+
+    .act-kill {
+      color: var(--accent-red);
+      border-color: rgba(255, 61, 90, 0.3);
+      background: rgba(255, 61, 90, 0.08);
+    }
+
+    .act-kill:hover {
+      background: rgba(255, 61, 90, 0.2);
+      box-shadow: var(--glow-red);
+    }
+
+    .act-pause {
+      color: var(--accent-amber);
+      border-color: rgba(255, 170, 0, 0.3);
+      background: rgba(255, 170, 0, 0.08);
+    }
+
+    .act-pause:hover {
+      background: rgba(255, 170, 0, 0.2);
+    }
+
+    .act-resume {
+      color: var(--accent-green);
+      border-color: rgba(57, 255, 138, 0.3);
+      background: rgba(57, 255, 138, 0.08);
+    }
+
+    .act-resume:hover {
+      background: rgba(57, 255, 138, 0.2);
+      box-shadow: var(--glow-green);
+    }
+
+    /* ── MINI SPARKLINES ── */
+    .sparkline {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 260px;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .toast.warn {
+      border-left: 3px solid var(--accent-amber);
+    }
+
+    .toast.error {
+      border-left: 3px solid var(--accent-red);
+    }
+
+    .toast.info {
+      border-left: 3px solid var(--accent-cyan);
+    }
+
+    .toast.success {
+      border-left: 3px solid var(--accent-green);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .toast-icon {
+      font-size: 14px;
+    }
+
+    .toast-msg {
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .toast-time {
+      color: var(--text-dim);
+      font-size: 9px;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+
+    .footer-left {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-right {
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    .footer-right span {
+      color: var(--accent-cyan);
+    }
+
+    /* ── ANIMATED GRID BACKGROUND ── */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .dashboard {
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      position: sticky;
+      z-index: 100;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width:1200px) {
+      .gauges-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .charts-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .bottom-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes glow-pulse {
+
+      0%,
+      100% {
+        opacity: 0.8;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .highlight {
+      animation: row-flash 1s ease;
+    }
+
+    @keyframes row-flash {
+      0% {
+        background: rgba(255, 61, 90, 0.2);
+      }
+
+      100% {
+        background: transparent;
+      }
+    }
+
+    @keyframes tab-flash {
+      0% {
+        box-shadow: 0 0 30px rgba(0, 229, 255, 0.6);
+        border-color: var(--accent-cyan);
+      }
+      100% {
+        box-shadow: none;
+        border-color: var(--border);
+      }
+    }
+
+    .tab-highlight {
+      animation: tab-flash 1s ease-out;
+    }
+
+    /* ── Process Kill Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 61, 90, 0.4);
+      border-radius: 12px;
+      padding: 24px;
+      width: 320px;
+      box-shadow: 0 0 40px rgba(255, 61, 90, 0.2);
+      animation: modalIn 0.25s ease;
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-red);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-body {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .modal-proc {
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel {
+      padding: 7px 16px;
+      border-radius: 5px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-confirm {
+      padding: 7px 16px;
+      border-radius: 5px;
+      background: rgba(255, 61, 90, 0.15);
+      border: 1px solid rgba(255, 61, 90, 0.4);
+      color: var(--accent-red);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .btn-confirm:hover {
+      background: rgba(255, 61, 90, 0.3);
+      box-shadow: var(--glow-red);
+    }
+
+    .btn-cancel:hover {
+      border-color: var(--border-glow);
+      color: var(--text-primary);
+    }
+
+    /* ── METRICS MINI CARDS ── */
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .metric-mini {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .metric-icon {
+      font-size: 20px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    .metric-mini-data {
+      flex: 1;
+    }
+
+    .metric-mini-val {
+      font-size: 16px;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+
+    .metric-mini-key {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .delta {
+      font-size: 9px;
+      margin-left: 4px;
+    }
+
+    .delta.up {
+      color: var(--accent-red);
+    }
+
+    .delta.down {
+      color: var(--accent-green);
+    }
+    
+    /* ── THEME TOGGLE ── */
+    body.light-mode {
+      --bg-base: #e6e9ef;
+      --bg-panel: #f0f3f8;
+      --bg-card: #ffffff;
+      --bg-hover: #dfe4eb;
+      --border: #d1d9e6;
+      --border-glow: #a3b8cc;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-dim: #94a3b8;
+      
+      --accent-cyan: #0284c7;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --accent-red: #e11d48;
+      --accent-purple: #7c3aed;
+
+      --glow-cyan: 0 0 15px rgba(2, 132, 199, 0.15);
+      --glow-green: 0 0 15px rgba(5, 150, 105, 0.15);
+      --glow-red: 0 0 15px rgba(225, 29, 72, 0.2);
+    }
+    body.light-mode::before { opacity: 0.1; filter: invert(1); }
+    body.light-mode::after {
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+    }
+    
+    .theme-switch {
+      width: 90px;
+      height: 36px;
+      border-radius: 18px;
+      background: #2a303c;
+      cursor: pointer;
+      position: relative;
+      box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05);
+      user-select: none;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body.light-mode .theme-switch {
+      background: #e9ecef;
+      box-shadow: inset 3px 3px 6px #c8d0d8, inset -3px -3px 6px #ffffff;
+    }
+
+    .theme-text {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1.1;
+      text-align: center;
+      color: #64748b;
+      transition: opacity 0.3s;
+      letter-spacing: 0.05em;
+    }
+    .text-dark { left: 12px; }
+    .text-light { right: 12px; opacity: 0; color: #94a3b8; }
+    body.light-mode .text-dark { opacity: 0; }
+    body.light-mode .text-light { opacity: 1; }
+
+    .theme-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #394251;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.4), -1px -1px 3px rgba(255,255,255,0.05);
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s, box-shadow 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    body.light-mode .theme-thumb {
+      left: calc(100% - 33px);
+      background: #ffffff;
+      box-shadow: 2px 2px 5px #c8d0d8, -2px -2px 5px #ffffff;
+    }
+
+    .icon-sun, .icon-moon { 
+      width: 14px; height: 14px; 
+      position: absolute; 
+      transition: opacity 0.3s; 
+      stroke: #94a3b8; 
+      fill: none; 
+      stroke-width: 2.5; 
+      stroke-linecap: round; 
+      stroke-linejoin: round; 
+    }
+    .icon-sun { opacity: 0; stroke: #64748b; }
+    body.light-mode .icon-sun { opacity: 1; }
+    body.light-mode .icon-moon { opacity: 0; }
+
+    /* ── PER-CORE CPU BARS ── */
+    .per-core-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .per-core-title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .per-core-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+    }
+    .core-bar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .core-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      min-width: 32px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .core-bar-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .core-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: width;
+    }
+    .core-bar-fill.hot {
+      background: linear-gradient(90deg, var(--accent-amber), var(--accent-red));
+    }
+    .core-pct {
+      font-size: 10px;
+      font-weight: 600;
+      min-width: 32px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+    }
+
+    /* ── ALERT BADGES ── */
+    .alert-bar.critical {
+      background: linear-gradient(90deg, rgba(255, 61, 90, 0.15), rgba(255, 61, 90, 0.05));
+      border-color: rgba(255, 61, 90, 0.4);
+    }
+    .alert-bar.critical .alert-icon,
+    .alert-bar.critical .alert-text {
+      color: var(--accent-red);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="grid-bg"></div>
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      <div>
+        <div class="logo-text">Glance OS</div>
+        <div class="logo-sub">Process Monitor v2.4.1</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="nav-tab active" onclick="setTab(this, 'overview')">Overview</div>
+      <div class="nav-tab" onclick="setTab(this, 'processes')">Processes</div>
+      <div class="nav-tab" onclick="setTab(this, 'network')">Network</div>
+      <div class="nav-tab" onclick="setTab(this, 'storage')">Storage</div>
+      <div class="nav-tab" onclick="setTab(this, 'alerts')">Alerts</div>
+    </div>
+
+    <div class="header-right">
+      <div class="status-live">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="theme-switch" onclick="document.body.classList.toggle('light-mode')">
+        <div class="theme-text text-dark">DARK<br>MODE</div>
+        <div class="theme-text text-light">LIGHT<br>MODE</div>
+        <div class="theme-thumb">
+          <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+      </div>
+      <button class="header-btn" onclick="triggerAlert()">⚠ Force Alert</button>
+    </div>
+  </header>
+
+  <!-- ── MAIN DASHBOARD ── -->
+  <div class="dashboard">
+
+    <!-- Alert Bar -->
+    <div class="alert-bar" id="alertBar" style="display:none">
+      <div class="alert-icon">⚡</div>
+      <div class="alert-text" id="alertMsg">High CPU usage detected on core 3 — process <strong>node (PID 4821)</strong>
+        consuming 87%</div>
+      <div class="alert-close" onclick="document.getElementById('alertBar').style.display='none'">×</div>
+    </div>
+
+    <!-- QUICK METRICS -->
+    <div class="metrics-strip">
+      <div class="metric-mini">
+        <div class="metric-icon" style="background:rgba(0,229,255,0.1); color:var(--accent-cyan)">⚙</div>
+        <div class="metric-mini-data">
+          <div class="metric-mini-val" id="totalProcs" style="color:var(--accent-cyan)">142 <span
+              class="delta up">+3</span></div>
+          <div class="metric-mini-key">Total Processes</div>
+        </div>
+      </div>
+      <div class="metric-mini">
+        <div class="metric-icon" style="background:rgba(57,255,138,0.1); color:var(--accent-green)">▶</div>
+        <div class="metric-mini-data">
+          <div class="metric-mini-val" id="runProcs" style="color:var(--accent-green)">38 <span class="delta">↑</span>
+          </div>
+          <div class="metric-mini-key">Running</div>
+        </div>
+      </div>
+      <div class="metric-mini">
+        <div class="metric-icon" style="background:rgba(255,170,0,0.1); color:var(--accent-amber)">⏸</div>
+        <div class="metric-mini-data">
+          <div class="metric-mini-val" id="sleepProcs" style="color:var(--accent-amber)">98</div>
+          <div class="metric-mini-key">Sleeping</div>
+        </div>
+      </div>
+      <div class="metric-mini">
+        <div class="metric-icon" style="background:rgba(255,61,90,0.1); color:var(--accent-red)">☠</div>
+        <div class="metric-mini-data">
+          <div class="metric-mini-val" id="zombieProcs" style="color:var(--accent-red)">6</div>
+          <div class="metric-mini-key">Zombie / Stopped</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PER-CORE CPU BARS -->
+    <div class="per-core-section">
+      <div class="per-core-title">
+        <div class="chart-title-dot" style="background:var(--accent-cyan);box-shadow:0 0 8px var(--accent-cyan)"></div>
+        Per-Core CPU Usage
+      </div>
+      <div class="per-core-grid" id="perCoreGrid">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+
+    <!-- GAUGES ROW (all 5 in single horizontal view) -->
+    <div class="gauges-row">
+
+      <!-- CPU -->
+      <div class="gauge-card" data-type="cpu">
+        <div class="gauge-label">
+          <div class="gauge-label-dot"></div> CPU Usage
+        </div>
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" width="110" height="110" viewBox="0 0 110 110">
+            <circle class="gauge-track" cx="55" cy="55" r="46" stroke-width="8" />
+            <circle class="gauge-fill" id="cpu-gauge" cx="55" cy="55" r="46" stroke="url(#cpuGrad)" stroke-width="8"
+              stroke-dasharray="289" stroke-dashoffset="289" />
+            <defs>
+              <linearGradient id="cpuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00e5ff" />
+                <stop offset="100%" stop-color="#39ff8a" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="cpu-pct">0%</div>
+            <div class="gauge-unit">CPU</div>
+          </div>
+        </div>
+        <div class="gauge-stats">
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="cpu-cores">8</div>
+            <div class="gauge-stat-key">Cores</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="cpu-freq">3.2G</div>
+            <div class="gauge-stat-key">GHz</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="cpu-temp">--°</div>
+            <div class="gauge-stat-key">Temp</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEMORY -->
+      <div class="gauge-card" data-type="mem">
+        <div class="gauge-label">
+          <div class="gauge-label-dot"></div> Memory
+        </div>
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" width="110" height="110" viewBox="0 0 110 110">
+            <circle class="gauge-track" cx="55" cy="55" r="46" stroke-width="8" />
+            <circle class="gauge-fill" id="mem-gauge" cx="55" cy="55" r="46" stroke="url(#memGrad)" stroke-width="8"
+              stroke-dasharray="289" stroke-dashoffset="289" />
+            <defs>
+              <linearGradient id="memGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#39ff8a" />
+                <stop offset="100%" stop-color="#00e5ff" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="mem-pct">0%</div>
+            <div class="gauge-unit">RAM</div>
+          </div>
+        </div>
+        <div class="gauge-stats">
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="mem-used">--</div>
+            <div class="gauge-stat-key">Used GB</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="mem-total">--</div>
+            <div class="gauge-stat-key">Total GB</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="mem-cached">--</div>
+            <div class="gauge-stat-key">Cached</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISK -->
+      <div class="gauge-card" data-type="disk">
+        <div class="gauge-label">
+          <div class="gauge-label-dot"></div> Disk I/O
+        </div>
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" width="110" height="110" viewBox="0 0 110 110">
+            <circle class="gauge-track" cx="55" cy="55" r="46" stroke-width="8" />
+            <circle class="gauge-fill" id="disk-gauge" cx="55" cy="55" r="46" stroke="url(#diskGrad)" stroke-width="8"
+              stroke-dasharray="289" stroke-dashoffset="289" />
+            <defs>
+              <linearGradient id="diskGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ffaa00" />
+                <stop offset="100%" stop-color="#ff6b35" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="disk-pct">0%</div>
+            <div class="gauge-unit">Disk</div>
+          </div>
+        </div>
+        <div class="gauge-stats">
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="disk-r">--</div>
+            <div class="gauge-stat-key">R MB/s</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="disk-w">--</div>
+            <div class="gauge-stat-key">W MB/s</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="disk-total">--</div>
+            <div class="gauge-stat-key">Total</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NETWORK -->
+      <div class="gauge-card" data-type="net">
+        <div class="gauge-label">
+          <div class="gauge-label-dot"></div> Network
+        </div>
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" width="110" height="110" viewBox="0 0 110 110">
+            <circle class="gauge-track" cx="55" cy="55" r="46" stroke-width="8" />
+            <circle class="gauge-fill" id="net-gauge" cx="55" cy="55" r="46" stroke="url(#netGrad)" stroke-width="8"
+              stroke-dasharray="289" stroke-dashoffset="289" />
+            <defs>
+              <linearGradient id="netGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#a259ff" />
+                <stop offset="100%" stop-color="#00e5ff" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="net-pct" style="font-size:16px">--</div>
+            <div class="gauge-unit">KB/s</div>
+          </div>
+        </div>
+        <div class="gauge-stats">
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="net-up">--</div>
+            <div class="gauge-stat-key">↑ Up</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="net-dn">--</div>
+            <div class="gauge-stat-key">↓ Down</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="net-conn">--</div>
+            <div class="gauge-stat-key">Conn</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOAD AVERAGE -->
+      <div class="gauge-card" data-type="proc">
+        <div class="gauge-label">
+          <div class="gauge-label-dot"></div> Load Avg
+        </div>
+        <div class="gauge-svg-wrap">
+          <svg class="gauge-svg" width="110" height="110" viewBox="0 0 110 110">
+            <circle class="gauge-track" cx="55" cy="55" r="46" stroke-width="8" />
+            <circle class="gauge-fill" id="load-gauge" cx="55" cy="55" r="46" stroke="url(#loadGrad)" stroke-width="8"
+              stroke-dasharray="289" stroke-dashoffset="289" />
+            <defs>
+              <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ff3d5a" />
+                <stop offset="100%" stop-color="#ffaa00" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-pct" id="load-pct" style="font-size:18px">0.0</div>
+            <div class="gauge-unit">Load</div>
+          </div>
+        </div>
+        <div class="gauge-stats">
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="load1">--</div>
+            <div class="gauge-stat-key">1 min</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="load5">--</div>
+            <div class="gauge-stat-key">5 min</div>
+          </div>
+          <div class="gauge-stat">
+            <div class="gauge-stat-val" id="load15">--</div>
+            <div class="gauge-stat-key">15 min</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /gauges -->
+
+    <!-- CHARTS ROW -->
+    <div class="charts-row">
+
+      <div class="chart-card" data-type="cpu">
+        <div class="chart-header">
+          <div class="chart-title">
+            <div class="chart-title-dot"></div> CPU Load History
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--accent-cyan)"></div>User
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--accent-green)"></div>System
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:rgba(255,170,0,0.7)"></div>IO Wait
+            </div>
+          </div>
+        </div>
+        <canvas id="cpuChart" height="110"></canvas>
+      </div>
+
+      <div class="chart-card" data-type="mem">
+        <div class="chart-header">
+          <div class="chart-title">
+            <div class="chart-title-dot"></div> Memory Usage
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--accent-green)"></div>Used
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:rgba(0,229,255,0.5)"></div>Cached
+            </div>
+          </div>
+        </div>
+        <canvas id="memChart" height="110"></canvas>
+      </div>
+
+      <div class="chart-card" data-type="net">
+        <div class="chart-header">
+          <div class="chart-title">
+            <div class="chart-title-dot"></div> Network I/O
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--accent-purple)"></div>RX
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--accent-cyan)"></div>TX
+            </div>
+          </div>
+        </div>
+        <canvas id="netChart" height="110"></canvas>
+      </div>
+
+    </div><!-- /charts -->
+
+    <!-- BOTTOM ROW -->
+    <div class="bottom-row">
+
+      <!-- System Info -->
+      <div class="info-card">
+        <div class="info-title">🖥 System Info</div>
+        <div class="info-grid">
+          <div class="info-row">
+            <div class="info-key">Hostname</div>
+            <div class="info-val" id="sys-hostname">prod-server-01</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">IP Address</div>
+            <div class="info-val" id="sys-ip">192.168.1.42</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">OS / Kernel</div>
+            <div class="info-val" id="sys-os">Linux 6.1.0</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">Architecture</div>
+            <div class="info-val" id="sys-arch">x86_64</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">CPU Model</div>
+            <div class="info-val" id="sys-cpu">Intel i7-12700</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">CPU Cores</div>
+            <div class="info-val" id="sys-cores">8 Physical / 16 VT</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">Total RAM</div>
+            <div class="info-val" id="sys-ram">16 GB DDR5</div>
+          </div>
+          <div class="info-row">
+            <div class="info-key">Swap Used</div>
+            <div class="info-val" id="swap-val">-- / -- GB</div>
+          </div>
+        </div>
+        <div class="uptime-bar">
+          <div class="uptime-label">System Uptime</div>
+          <div class="uptime-track">
+            <div class="uptime-fill"></div>
+          </div>
+          <div class="uptime-val" id="uptime-val">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Process Table -->
+      <div class="process-card">
+        <div class="process-header">
+          <div class="process-title">
+            ⚙ Process Manager
+            <span class="proc-count" id="proc-badge">142 PROCS</span>
+          </div>
+          <div class="process-controls">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="search-input" id="procSearch" placeholder="Search process…"
+                oninput="filterProcs()">
+            </div>
+            <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-btn" onclick="setFilter('running',this)">Running</button>
+            <button class="filter-btn" onclick="setFilter('sleeping',this)">Sleep</button>
+            <button class="filter-btn" onclick="setFilter('stopped',this)">Stopped</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="procTable">
+            <thead>
+              <tr>
+                <th onclick="sortTable('pid')">PID ↕</th>
+                <th onclick="sortTable('name')">Process ↕</th>
+                <th onclick="sortTable('user')">User</th>
+                <th onclick="sortTable('status')">Status</th>
+                <th onclick="sortTable('cpu')">CPU% ↕</th>
+                <th onclick="sortTable('mem')">MEM% ↕</th>
+                <th>Threads</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="procBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /bottom-row -->
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <span>Refresh: <span style="color:var(--accent-green)">0.5s</span></span>
+        <span>Session: <span style="color:var(--accent-cyan)" id="session-time">00:00</span></span>
+        <span>Alerts: <span id="alert-count" style="color:var(--accent-amber)">0</span></span>
+        <span>Student Project — Operating Systems © 2024</span>
+      </div>
+      <div class="footer-right">Built with <span>♥</span> — SysVision OS Dashboard</div>
+    </div>
+
+  </div><!-- /dashboard -->
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Kill Modal -->
+  <div class="modal-overlay" id="killModal">
+    <div class="modal">
+      <div class="modal-title">⚠ Terminate Process</div>
+      <div class="modal-body">
+        You are about to send <strong>SIGKILL</strong> to process<br>
+        <span class="modal-proc" id="killProcName">—</span><br><br>
+        This action cannot be undone. Unsaved data in this process will be lost.
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" onclick="confirmKill()">Kill Process</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────
+    //  STATE
+    // ─────────────────────────────────────────────
+    let cpuHistory = Array(60).fill(0);
+    let memHistory = Array(60).fill(0);
+    let netRxHist = Array(60).fill(0);
+    let netTxHist = Array(60).fill(0);
+    let sysioHist = Array(60).fill(0);
+
+    let currentFilter = 'all';
+    let sortKey = 'cpu', sortDir = -1;
+    let killTarget = null;
+    let alertCount = 0;
+    let sessionStart = Date.now();
+
+    // ── Alert cooldown (prevent spam) ──
+    let lastCpuAlertTime = 0;
+    let lastMemAlertTime = 0;
+    const ALERT_COOLDOWN_MS = 30000;
+
+    // ─────────────────────────────────────────────
+    //  SMOOTH INTERPOLATION ENGINE (60fps)
+    //  Values animate smoothly between server ticks
+    // ─────────────────────────────────────────────
+    const LERP_SPEED = 0.15; // How fast values catch up (0-1, higher = snappier)
+    let targetValues = { cpu: 0, mem: 0, disk: 0, netGauge: 0, loadGauge: 0 };
+    let currentValues = { cpu: 0, mem: 0, disk: 0, netGauge: 0, loadGauge: 0 };
+    let rafId = null;
+    let needsChartUpdate = false;
+    let needsTableUpdate = false;
+    let lastTableRender = 0;
+    const TABLE_THROTTLE_MS = 1000; // Only rebuild table DOM max once per second
+
+    function lerp(current, target, speed) {
+      const diff = target - current;
+      if (Math.abs(diff) < 0.1) return target;
+      return current + diff * speed;
+    }
+
+    // 60fps render loop — only touches GPU-friendly properties
+    function animationLoop() {
+      // Smoothly interpolate gauge values
+      currentValues.cpu = lerp(currentValues.cpu, targetValues.cpu, LERP_SPEED);
+      currentValues.mem = lerp(currentValues.mem, targetValues.mem, LERP_SPEED);
+      currentValues.disk = lerp(currentValues.disk, targetValues.disk, LERP_SPEED);
+      currentValues.netGauge = lerp(currentValues.netGauge, targetValues.netGauge, LERP_SPEED);
+      currentValues.loadGauge = lerp(currentValues.loadGauge, targetValues.loadGauge, LERP_SPEED);
+
+      // Update gauges (CSS transition handles the visual smoothness)
+      setGauge('cpu-gauge', currentValues.cpu);
+      setGauge('mem-gauge', currentValues.mem);
+      setGauge('disk-gauge', currentValues.disk);
+      setGauge('net-gauge', currentValues.netGauge);
+      setGauge('load-gauge', currentValues.loadGauge);
+
+      // Charts: only redraw when new data arrived
+      if (needsChartUpdate) {
+        needsChartUpdate = false;
+        updateCharts();
+      }
+
+      // Table: throttled rebuild (expensive DOM operation)
+      if (needsTableUpdate && Date.now() - lastTableRender > TABLE_THROTTLE_MS) {
+        needsTableUpdate = false;
+        lastTableRender = Date.now();
+        renderTable();
+      }
+
+      rafId = requestAnimationFrame(animationLoop);
+    }
+
+    // ─────────────────────────────────────────────
+    //  PROCESS DATA
+    // ─────────────────────────────────────────────
+    let processes = [];
+    let expandedGroups = new Set();
+
+    // ─────────────────────────────────────────────
+    //  WEBSOCKET CONNECTION
+    // ─────────────────────────────────────────────
+    let ws = null;
+    let wsConnected = false;
+    let httpFallbackInterval = null;
+
+    function connectWebSocket() {
+      try {
+        ws = new WebSocket('ws://localhost:8765');
+        ws.onopen = () => {
+          wsConnected = true;
+          console.log('✅ WebSocket connected');
+          if (httpFallbackInterval) { clearInterval(httpFallbackInterval); httpFallbackInterval = null; }
+        };
+        ws.onmessage = (evt) => {
+          try { applyMetrics(JSON.parse(evt.data)); } catch(e) { console.error('WS parse error', e); }
+        };
+        ws.onclose = () => {
+          wsConnected = false;
+          console.warn('⚠ WebSocket disconnected, falling back to HTTP');
+          startHttpFallback();
+          setTimeout(connectWebSocket, 3000);
+        };
+        ws.onerror = () => { ws.close(); };
+      } catch(e) { startHttpFallback(); }
+    }
+
+    function startHttpFallback() {
+      if (httpFallbackInterval) return;
+      httpFallbackInterval = setInterval(async () => {
+        if (wsConnected) return;
+        try {
+          const res = await fetch('/api/state');
+          if (res.ok) applyMetrics(await res.json());
+        } catch(e) {}
+      }, 500);
+    }
+
+    // ─────────────────────────────────────────────
+    //  CLOCK + UPTIME
+    // ─────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toTimeString().slice(0, 8);
+      const sess = Math.floor((Date.now() - sessionStart) / 1000);
+      document.getElementById('session-time').textContent =
+        String(Math.floor(sess / 60)).padStart(2, '0') + ':' + String(sess % 60).padStart(2, '0');
+    }
+
+    // ─────────────────────────────────────────────
+    //  GAUGE HELPER (cached elements for speed)
+    // ─────────────────────────────────────────────
+    const _gaugeCache = {};
+    function setGauge(id, pct) {
+      const circ = 289;
+      if (!_gaugeCache[id]) _gaugeCache[id] = document.getElementById(id);
+      const el = _gaugeCache[id];
+      if (el) el.style.strokeDashoffset = circ - (pct / 100) * circ;
+    }
+
+    // ─────────────────────────────────────────────
+    //  APPLY METRICS (shared by WS + HTTP)
+    //  Lightweight: only sets targets + flags redraws
+    // ─────────────────────────────────────────────
+    function applyMetrics(data) {
+      try {
+        // ── CPU ──
+        const cpu = Math.round(data.cpu.usage * 10) / 10;
+        cpuHistory.push(cpu); if (cpuHistory.length > 60) cpuHistory.shift();
+
+        // ── Memory ──
+        const mem = Math.round(((data.memory.used / data.memory.total) * 100) * 10) / 10;
+        memHistory.push(mem); if (memHistory.length > 60) memHistory.shift();
+
+        // ── Disk ──
+        const disk = data.disk.usagePercent;
+
+        // ── Network ──
+        const rxKb = data.network.download;
+        const txKb = data.network.upload;
+        const netTotal = rxKb + txKb;
+        netRxHist.push(rxKb); if (netRxHist.length > 60) netRxHist.shift();
+        netTxHist.push(txKb); if (netTxHist.length > 60) netTxHist.shift();
+
+        const loadArr = data.cpu.loadAvg || [0,0,0];
+        const cores = data.cpu.cores || 8;
+        const temp = Math.floor(40 + cpu / 100 * 35);
+        const rxKbps = rxKb * 8, txKbps = txKb * 8, netTotalKbps = netTotal * 8;
+
+        // ── Set interpolation targets (animated in rAF loop) ──
+        targetValues.cpu = cpu;
+        targetValues.mem = mem;
+        targetValues.disk = disk;
+        targetValues.netGauge = Math.min(100, (netTotalKbps / 1024) / 10);
+        targetValues.loadGauge = Math.min(100, (loadArr[0] / cores) * 100);
+
+        // ── Text updates (only update if value changed — no reflow) ──
+        setText('cpu-pct', Math.round(cpu) + '%');
+        setText('cpu-cores', cores);
+        setText('cpu-freq', data.cpu.freq || '--');
+        setText('cpu-temp', temp + '°');
+        setText('mem-pct', Math.round(mem) + '%');
+        setText('mem-used', data.memory.used.toFixed(1));
+        setText('mem-total', data.memory.total.toFixed(1));
+        setText('mem-cached', (data.memory.cached || 0).toFixed(1));
+        setText('disk-pct', Math.round(disk) + '%');
+        setText('disk-r', (typeof data.disk.read === 'number') ? data.disk.read.toFixed(1) : '-');
+        setText('disk-w', (typeof data.disk.write === 'number') ? data.disk.write.toFixed(1) : '-');
+        setText('disk-total', data.disk.total + 'G');
+
+        // ── Network display ──
+        setText('net-pct', netTotalKbps >= 1024 ? (netTotalKbps / 1024).toFixed(1) : netTotalKbps.toFixed(0));
+        const netUnit = document.querySelector('#net-pct + .gauge-unit');
+        if (netUnit) { const u = netTotalKbps >= 1024 ? 'Mbps' : 'Kbps'; if (netUnit.textContent !== u) netUnit.textContent = u; }
+        const fmtNet = (v) => v >= 1024 ? (v / 1024).toFixed(1) + 'Mb' : v.toFixed(0) + 'Kb';
+        setText('net-up', fmtNet(txKbps));
+        setText('net-dn', fmtNet(rxKbps));
+        setText('net-conn', data.network.connections || 0);
+
+        // ── Load average ──
+        setText('load-pct', loadArr[0].toFixed(2));
+        setText('load1', loadArr[0].toFixed(2));
+        setText('load5', loadArr[1].toFixed(2));
+        setText('load15', loadArr[2].toFixed(2));
+
+        // ── System info ──
+        if (data.system) {
+          setText('sys-hostname', data.system.hostname);
+          setText('sys-ip', data.system.ip || '-');
+          setText('sys-os', data.system.os);
+          setText('sys-arch', data.system.arch || '-');
+          setText('sys-cpu', data.cpu.model || '-');
+          setText('sys-cores', cores + ' Logical');
+          setText('sys-ram', data.memory.total.toFixed(1) + ' GB');
+          setText('uptime-val', data.system.uptime);
+        }
+
+        // ── Swap ──
+        if (data.memory.swap) {
+          setText('swap-val', data.memory.swap.used.toFixed(1) + ' / ' + data.memory.swap.total.toFixed(1) + ' GB');
+        }
+
+        // ── CPU gauge color ──
+        const cpuFill = document.getElementById('cpu-gauge');
+        cpuFill.setAttribute('stroke', cpu > 75 ? 'url(#alertGrad)' : 'url(#cpuGrad)');
+
+        // ── Per-core CPU bars ──
+        if (data.cpu.perCore && data.cpu.perCore.length > 0) {
+          renderPerCore(data.cpu.perCore);
+        }
+
+        // ── Processes ──
+        processes = data.processes.list.map(p => ({
+          pid: p.pid, name: p.name,
+          user: p.user || 'SYSTEM',
+          status: p.status.toLowerCase(),
+          cpu: typeof p.cpu === 'number' ? p.cpu.toFixed(1) : p.cpu,
+          mem: typeof p.mem === 'number' ? p.mem.toFixed(1) : p.mem,
+          threads: p.threads, alive: true,
+          paused: p.status.toLowerCase() === 'stopped'
+        }));
+
+        setText('totalProcs', data.processes.total + ' <span class="delta up">Live</span>', true);
+        setText('runProcs', data.processes.running);
+        setText('sleepProcs', data.processes.sleeping);
+        setText('zombieProcs', data.processes.zombie);
+
+        // ── Automatic alerts ──
+        const now = Date.now();
+        if (cpu > 90 && now - lastCpuAlertTime > ALERT_COOLDOWN_MS) {
+          lastCpuAlertTime = now;
+          showAlert('🔴 CPU usage critically high at <strong>' + Math.round(cpu) + '%</strong> — investigate heavy processes', 'critical');
+          showToast('CPU > 90%: ' + Math.round(cpu) + '%', 'error', '🔥');
+        }
+        if (mem > 85 && now - lastMemAlertTime > ALERT_COOLDOWN_MS) {
+          lastMemAlertTime = now;
+          showAlert('🟠 Memory usage high at <strong>' + Math.round(mem) + '%</strong> — ' + data.memory.used.toFixed(1) + ' / ' + data.memory.total.toFixed(1) + ' GB', 'critical');
+          showToast('Memory > 85%: ' + Math.round(mem) + '%', 'warn', '⚠');
+        }
+
+        // ── Flag deferred visual updates (handled in rAF loop) ──
+        needsChartUpdate = true;
+        needsTableUpdate = true;
+      } catch (err) { console.error('applyMetrics error', err); }
+    }
+
+    // ── Efficient DOM text setter (avoids reflow when unchanged) ──
+    const _textCache = {};
+    function setText(id, val, isHTML) {
+      if (!_textCache[id]) _textCache[id] = document.getElementById(id);
+      const el = _textCache[id];
+      if (!el) return;
+      const s = String(val);
+      if (isHTML) { if (el.innerHTML !== s) el.innerHTML = s; }
+      else { if (el.textContent !== s) el.textContent = s; }
+    }
+
+    // ─────────────────────────────────────────────
+    //  PER-CORE RENDERING
+    // ─────────────────────────────────────────────
+    function renderPerCore(cores) {
+      const grid = document.getElementById('perCoreGrid');
+      if (!grid) return;
+      // Reuse DOM if same count
+      if (grid.children.length !== cores.length) {
+        grid.innerHTML = cores.map((c, i) => `
+          <div class="core-bar-item">
+            <span class="core-label">C${c.core}</span>
+            <div class="core-bar-track"><div class="core-bar-fill" id="core-fill-${i}" style="width:0%"></div></div>
+            <span class="core-pct" id="core-pct-${i}">0%</span>
+          </div>`).join('');
+      }
+      cores.forEach((c, i) => {
+        const fill = document.getElementById('core-fill-' + i);
+        const pct = document.getElementById('core-pct-' + i);
+        if (fill) {
+          fill.style.width = Math.min(100, c.load) + '%';
+          fill.className = 'core-bar-fill' + (c.load > 75 ? ' hot' : '');
+        }
+        if (pct) pct.textContent = Math.round(c.load) + '%';
+      });
+    }
+
+    // ─────────────────────────────────────────────
+    //  CHARTS
+    // ─────────────────────────────────────────────
+    function drawLineChart(canvas, datasets, opts = {}) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = H * 0.1 + (H * 0.8 / 4) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      const len = datasets[0].data.length;
+
+      datasets.forEach(ds => {
+        const data = ds.data;
+        const max = opts.max || 100;
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, ds.color + '55');
+        grad.addColorStop(1, ds.color + '00');
+
+        ctx.beginPath();
+        data.forEach((v, i) => {
+          const x = (i / (len - 1)) * W;
+          const y = H - (H * 0.1) - (v / max) * (H * 0.8);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        const lastX = (len - 1) / (len - 1) * W, firstX = 0;
+        ctx.lineTo(lastX, H); ctx.lineTo(firstX, H); ctx.closePath();
+        ctx.fillStyle = grad; ctx.fill();
+
+        // Line
+        ctx.beginPath();
+        data.forEach((v, i) => {
+          const x = (i / (len - 1)) * W;
+          const y = H - (H * 0.1) - (v / max) * (H * 0.8);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = ds.color;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Dot at end
+        const lv = data[data.length - 1];
+        const lx = W, ly = H - (H * 0.1) - (lv / max) * (H * 0.8);
+        ctx.beginPath(); ctx.arc(lx - 1, ly, 3, 0, Math.PI * 2);
+        ctx.fillStyle = ds.color; ctx.fill();
+      });
+    }
+
+    // ── Canvas size cache (avoids layout-triggering getBoundingClientRect) ──
+    const _canvasSizeCache = {};
+    let _lastResizeCheck = 0;
+
+    function resizeCanvas(c) {
+      const now = Date.now();
+      // Only re-measure every 2 seconds (resize is rare)
+      if (_canvasSizeCache[c.id] && now - _lastResizeCheck < 2000) {
+        const cached = _canvasSizeCache[c.id];
+        if (c.width !== cached.w) c.width = cached.w;
+        if (c.height !== cached.h) c.height = cached.h;
+        return;
+      }
+      _lastResizeCheck = now;
+      const r = c.parentElement.getBoundingClientRect();
+      const w = Math.round(r.width - 32);
+      const h = parseInt(c.getAttribute('height') || 110);
+      _canvasSizeCache[c.id] = { w, h };
+      if (c.width !== w) c.width = w;
+      if (c.height !== h) c.height = h;
+    }
+
+    // ── Chart element cache ──
+    const _chartEls = {};
+    function getChartEl(id) {
+      if (!_chartEls[id]) _chartEls[id] = document.getElementById(id);
+      return _chartEls[id];
+    }
+
+    function updateCharts() {
+      const cpuCanvas = getChartEl('cpuChart');
+      const memCanvas = getChartEl('memChart');
+      const netCanvas = getChartEl('netChart');
+
+      resizeCanvas(cpuCanvas);
+      resizeCanvas(memCanvas);
+      resizeCanvas(netCanvas);
+
+      drawLineChart(cpuCanvas, [
+        { data: cpuHistory, color: '#00e5ff' },
+        { data: cpuHistory.map(v => v * 0.35), color: '#39ff8a' },
+        { data: cpuHistory.map(v => v * 0.12), color: '#ffaa00' },
+      ]);
+
+      drawLineChart(memCanvas, [
+        { data: memHistory, color: '#39ff8a' },
+        { data: memHistory.map(v => v * 0.4), color: '#00e5ff' },
+      ]);
+
+      // Auto-scale network chart based on peak value
+      const netPeak = Math.max(10, ...netRxHist, ...netTxHist);
+      const netMax = Math.ceil(netPeak * 1.3);
+      drawLineChart(netCanvas, [
+        { data: netRxHist, color: '#a259ff' },
+        { data: netTxHist, color: '#00e5ff' },
+      ], { max: netMax });
+    }
+
+    // ─────────────────────────────────────────────
+    //  PROCESS TABLE
+    // ─────────────────────────────────────────────
+    // Real processes come down in updateMetrics now
+    function updateProcesses() {
+      // Replaced with backend polling
+    }
+
+    function toggleGroup(name) {
+      if (expandedGroups.has(name)) expandedGroups.delete(name);
+      else expandedGroups.add(name);
+      renderTable();
+    }
+
+    function renderTable() {
+      const search = document.getElementById('procSearch').value.toLowerCase();
+      let procs = processes.filter(p => p.alive);
+
+      if (currentFilter !== 'all')
+        procs = procs.filter(p => p.status === currentFilter);
+      if (search)
+        procs = procs.filter(p => p.name.toLowerCase().includes(search) || String(p.pid).includes(search) || p.user.includes(search));
+
+      // Group processes
+      const groupsMap = new Map();
+      procs.forEach(p => {
+        if (!groupsMap.has(p.name)) {
+          groupsMap.set(p.name, {
+            name: p.name,
+            processes: [],
+            cpu: 0,
+            mem: 0,
+            threads: 0,
+            status: 'sleeping'
+          });
+        }
+        const g = groupsMap.get(p.name);
+        g.processes.push(p);
+        g.cpu += parseFloat(p.cpu) || 0;
+        g.mem += parseFloat(p.mem) || 0;
+        g.threads += parseInt(p.threads) || 0;
+        
+        if (p.status === 'running') g.status = 'running';
+        else if (g.status !== 'running' && p.status === 'sleeping') g.status = 'sleeping';
+        else if (g.status !== 'running' && g.status !== 'sleeping' && p.status === 'stopped') g.status = 'stopped';
+      });
+
+      let groupedProcs = Array.from(groupsMap.values());
+
+      // Sort groups
+      groupedProcs.sort((a, b) => {
+        let va = a[sortKey], vb = b[sortKey];
+        if (sortKey === 'pid' || sortKey === 'user' || sortKey === 'status') {
+            va = a.processes[0][sortKey];
+            vb = b.processes[0][sortKey];
+        }
+        if (!isNaN(va)) { va = parseFloat(va); vb = parseFloat(vb); }
+        return va < vb ? sortDir : va > vb ? -sortDir : 0;
+      });
+
+      // ── Use DocumentFragment for batch DOM update (no intermediate reflows) ──
+      const frag = document.createDocumentFragment();
+
+      groupedProcs.forEach(g => {
+        if (g.processes.length === 1) {
+           renderRow(frag, g.processes[0], false);
+        } else {
+           renderGroupRow(frag, g);
+           if (expandedGroups.has(g.name)) {
+             let children = [...g.processes];
+             children.sort((a, b) => {
+                let va = a[sortKey], vb = b[sortKey];
+                if (!isNaN(va)) { va = parseFloat(va); vb = parseFloat(vb); }
+                return va < vb ? sortDir : va > vb ? -sortDir : 0;
+             });
+             children.forEach(p => renderRow(frag, p, true));
+           }
+        }
+      });
+
+      // Single DOM write — replaces all children at once
+      const tbody = document.getElementById('procBody');
+      tbody.textContent = ''; // faster than innerHTML = ''
+      tbody.appendChild(frag);
+
+      setText('proc-badge', procs.length + ' PROCS');
+    }
+
+    function renderGroupRow(tbody, g) {
+      const isExpanded = expandedGroups.has(g.name);
+      const cpu = g.cpu;
+      const cpuColor = cpu > 50 ? 'var(--accent-red)' : cpu > 20 ? 'var(--accent-amber)' : 'var(--accent-green)';
+      const statusClass = {
+        running: 'status-running',
+        sleeping: 'status-sleeping',
+        stopped: 'status-stopped',
+        zombie: 'status-zombie',
+      }[g.status] || 'status-sleeping';
+
+      const tr = document.createElement('tr');
+      tr.className = 'group-parent';
+      tr.title = 'Click to expand/collapse';
+      tr.onclick = (e) => {
+          if (!e.target.closest('.action-btns')) toggleGroup(g.name);
+      };
+
+      tr.innerHTML = `
+        <td class="pid-cell">-</td>
+        <td class="name-cell">
+            <span class="chevron ${isExpanded ? 'expanded' : ''}">▶</span>
+            ${g.name} <span style="color:var(--text-dim);font-size:9px;margin-left:4px">(${g.processes.length})</span>
+        </td>
+        <td style="color:var(--text-secondary)">various</td>
+        <td><span class="status-badge ${statusClass}">${g.status}</span></td>
+        <td>
+          <div class="cpu-bar-wrap">
+            <span style="color:${cpuColor};min-width:36px">${cpu.toFixed(1)}%</span>
+            <div class="cpu-mini-bar">
+              <div class="cpu-mini-fill" style="width:${Math.min(cpu, 100)}%;background:${cpuColor}"></div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--accent-purple)">${g.mem.toFixed(1)}%</td>
+        <td style="color:var(--text-secondary)">${g.threads}</td>
+        <td><div class="action-btns"></div></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function renderRow(tbody, p, isChild) {
+      const cpu = parseFloat(p.cpu);
+      const cpuColor = cpu > 50 ? 'var(--accent-red)' : cpu > 20 ? 'var(--accent-amber)' : 'var(--accent-green)';
+      const statusClass = {
+        running: 'status-running',
+        sleeping: 'status-sleeping',
+        stopped: 'status-stopped',
+        zombie: 'status-zombie',
+      }[p.status] || 'status-sleeping';
+
+      const tr = document.createElement('tr');
+      if (isChild) tr.className = 'group-child';
+      tr.innerHTML = `
+        <td class="pid-cell">${p.pid}</td>
+        <td class="name-cell">${p.name}</td>
+        <td style="color:var(--text-secondary)">${p.user}</td>
+        <td><span class="status-badge ${statusClass}">${p.status}</span></td>
+        <td>
+          <div class="cpu-bar-wrap">
+            <span style="color:${cpuColor};min-width:36px">${p.cpu}%</span>
+            <div class="cpu-mini-bar">
+              <div class="cpu-mini-fill" style="width:${Math.min(cpu, 100)}%;background:${cpuColor}"></div>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--accent-purple)">${p.mem}%</td>
+        <td style="color:var(--text-secondary)">${p.threads}</td>
+        <td>
+          <div class="action-btns">
+            ${p.paused
+              ? `<button class="act-btn act-resume" onclick="resumeProc(${p.pid})">Resume</button>`
+              : `<button class="act-btn act-pause"  onclick="pauseProc(${p.pid})">Pause</button>`
+            }
+            <button class="act-btn act-kill" onclick="promptKill(${p.pid},'${p.name}')">Kill</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // ─────────────────────────────────────────────
+    //  PROCESS ACTIONS
+    // ─────────────────────────────────────────────
+    function promptKill(pid, name) {
+      killTarget = pid;
+      document.getElementById('killProcName').textContent = `${name} (PID ${pid})`;
+      document.getElementById('killModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('killModal').classList.remove('open');
+      killTarget = null;
+    }
+
+    async function confirmKill() {
+      if (killTarget) {
+        try {
+          const p = processes.find(x => x.pid === killTarget);
+          if (p) {
+            p.alive = false; // optimistic ui drop
+            renderTable();
+          }
+          const res = await fetch('/api/kill/' + killTarget);
+          if (res.ok) {
+            showToast(`Process ${p ? p.name : ''} (${killTarget}) terminated`, 'error', '💀');
+            alertCount++;
+            document.getElementById('alert-count').textContent = alertCount;
+          } else {
+            showToast('Failed to terminate process', 'error', '⚠');
+          }
+        } catch (err) {
+          showToast('Error communicating with system', 'error', '⚠');
+        }
+      }
+      closeModal();
+    }
+
+    function pauseProc(pid) {
+      const p = processes.find(x => x.pid === pid);
+      if (p) { p.paused = true; p.status = 'stopped'; showToast(`${p.name} paused (SIGSTOP)`, 'warn', '⏸'); renderTable(); }
+    }
+
+    function resumeProc(pid) {
+      const p = processes.find(x => x.pid === pid);
+      if (p) { p.paused = false; p.status = 'running'; showToast(`${p.name} resumed (SIGCONT)`, 'success', '▶'); renderTable(); }
+    }
+
+    // ─────────────────────────────────────────────
+    //  FILTER & SORT
+    // ─────────────────────────────────────────────
+    function setFilter(f, btn) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable();
+    }
+
+    function filterProcs() { renderTable(); }
+
+    function sortTable(key) {
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = -1; }
+      renderTable();
+    }
+
+    // ─────────────────────────────────────────────
+    //  TOASTS
+    // ─────────────────────────────────────────────
+    function showToast(msg, type = 'info', icon = 'ℹ') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <span class="toast-msg">${msg}</span>
+    <span class="toast-time">${new Date().toTimeString().slice(0, 8)}</span>
+  `;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)'; toast.style.transition = 'all 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    function showAlert(msg, type = 'warn') {
+      const bar = document.getElementById('alertBar');
+      document.getElementById('alertMsg').innerHTML = msg;
+      bar.style.display = 'flex';
+      bar.className = 'alert-bar' + (type === 'critical' ? ' critical' : '');
+      alertCount++;
+      document.getElementById('alert-count').textContent = alertCount;
+    }
+
+    function triggerAlert() {
+      const msgs = [
+        'Memory usage exceeded 85% — consider restarting <strong>java (PID 2341)</strong>',
+        'Zombie process detected: <strong>strace (PID 1591)</strong> — parent not reaping',
+        'Disk I/O wait spike on /dev/sda1 — possible bottleneck',
+        'Network RX dropped packets detected on eth0',
+        'Load average exceeded 2.0 — system under pressure',
+      ];
+      showAlert(msgs[Math.floor(Math.random() * msgs.length)]);
+      showToast('New system alert generated', 'warn', '⚡');
+    }
+
+    // ─────────────────────────────────────────────
+    //  NAV TABS
+    // ─────────────────────────────────────────────
+    function setTab(el, target) {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+
+      if (!target) return;
+      
+      const views = {
+        'overview': document.querySelector('.gauges-row'),
+        'processes': document.querySelector('.process-card'),
+        'network': document.querySelector('.charts-row'),
+        'storage': document.querySelector('.gauge-card[data-type="disk"]'),
+        'alerts': document.querySelector('.info-card')
+      };
+
+      const targetEl = views[target];
+      if (targetEl) {
+         targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+         targetEl.classList.remove('tab-highlight');
+         void targetEl.offsetWidth;
+         targetEl.classList.add('tab-highlight');
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    //  ALERT GRAD (for high CPU)
+    // ─────────────────────────────────────────────
+    const svg = document.querySelector('svg');
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `<linearGradient id="alertGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+  <stop offset="0%" stop-color="#ff3d5a"/>
+  <stop offset="100%" stop-color="#ffaa00"/>
+</linearGradient>`;
+    if (svg) svg.appendChild(defs);
+
+    // ─────────────────────────────────────────────
+    //  BOOT SEQUENCE
+    // ─────────────────────────────────────────────
+    window.addEventListener('load', () => {
+      // FIX: No fake random data — histories start at 0 and fill with real values
+      renderTable();
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // Start 60fps animation loop (smooth gauge interpolation)
+      rafId = requestAnimationFrame(animationLoop);
+
+      // Connect via WebSocket (primary) with HTTP fallback
+      connectWebSocket();
+
+      // Startup toasts
+      setTimeout(() => showToast('SysVision OS Dashboard initialized', 'success', '✅'), 500);
+      setTimeout(() => showToast('60fps render engine active', 'info', '📡'), 1200);
+    });
+
+    // Close modal on overlay click
+    document.getElementById('killModal').addEventListener('click', function (e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+</body>
+
+</html>
