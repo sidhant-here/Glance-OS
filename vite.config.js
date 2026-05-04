@@ -18,6 +18,11 @@ let diskStatsCache = null;
 let netUpload = 0;   // KB/s
 let netDownload = 0;  // KB/s
 
+// EMA-smoothed network speed (prevents flicker)
+let smoothNetUpload = 0;
+let smoothNetDownload = 0;
+const NET_EMA_ALPHA = 0.3; // 0 = very smooth, 1 = raw
+
 // Windows Native state via powershell
 let nativeState = {
     cpu: 0,
@@ -29,6 +34,8 @@ let nativeState = {
     mem_free: 0,
     per_core: []
 };
+let nativeStateReady = false;  // true after first telemetry line arrives
+let lastCpuValue = 0;          // hold-last-good CPU value
 
 let load1 = 0;
 let load5 = 0;
@@ -138,6 +145,12 @@ if (isWindows) {
         try {
             const data = JSON.parse(line.trim());
             nativeState = { ...nativeState, ...data };
+            nativeStateReady = true;
+
+            // Hold last good CPU value (never go to 0 unless system truly idle)
+            if (nativeState.cpu > 0.05) {
+                lastCpuValue = nativeState.cpu;
+            }
             
             // Re-calculate Unix load averages safely here
             const curLoadRaw = (nativeState.cpu / 100) * (os.cpus().length || 8);
@@ -155,32 +168,48 @@ if (isWindows) {
         }
     });
 
-    ps.stderr.on('data', () => {});
+    ps.stderr.on('data', (data) => { console.warn('⚙ telemetry.ps1:', data.toString().trim()); });
     ps.on('close', () => {
         console.error('warning: telemetry powershell process died');
     });
 }
 
 // ─────────────────────────────────────────────
-//  PER-CORE CPU via systeminformation (fallback for non-Windows)
+//  CPU LOAD FALLBACK (non-Windows only — Windows uses telemetry.ps1 Get-Counter)
 // ─────────────────────────────────────────────
+let cpuNodeTotal = 0;
+let cpuNodePerCore = [];
+
 if (!isWindows) {
-    setInterval(async () => {
-        try {
-            const load = await si.currentLoad();
-            if (load && load.cpus) {
-                perCoreSI = load.cpus.map((c, i) => ({
-                    core: i,
-                    load: Math.round(c.load * 10) / 10
-                }));
-            }
-        } catch (e) {}
-    }, 2000);
+    let lastCpus = os.cpus();
+    setInterval(() => {
+        let cpus = os.cpus();
+        let totalIdle = 0, totalTick = 0;
+        let perCore = [];
+        for (let i = 0; i < cpus.length; i++) {
+            let cpu = cpus[i];
+            let last = lastCpus[i] || cpu;
+            let idle = cpu.times.idle - last.times.idle;
+            let t1 = 0; for (let type in cpu.times) t1 += cpu.times[type];
+            let t2 = 0; for (let type in last.times) t2 += last.times[type];
+            let tick = t1 - t2;
+            let load = tick === 0 ? 0 : (1 - idle / tick) * 100;
+            perCore.push({ core: i, load: Math.round(load * 10) / 10 });
+            totalIdle += idle;
+            totalTick += tick;
+        }
+        cpuNodeTotal = totalTick === 0 ? 0 : (1 - totalIdle / totalTick) * 100;
+        cpuNodePerCore = perCore;
+        lastCpus = cpus;
+    }, 1000);
 }
 
 // ─────────────────────────────────────────────
 //  NETWORK SPEED (1s polling)
 // ─────────────────────────────────────────────
+// Prime systeminformation's network baseline (first call returns -1)
+si.networkStats().catch(() => {});
+
 setInterval(async () => {
     try {
         const netStats = await si.networkStats();
@@ -189,17 +218,25 @@ setInterval(async () => {
             let rxBytesSec = 0;
             for (const intf of netStats) {
                 if (typeof intf.tx_sec === 'number' && typeof intf.rx_sec === 'number') {
-                    if (intf.tx_sec >= 0) txBytesSec += intf.tx_sec;
-                    if (intf.rx_sec >= 0) rxBytesSec += intf.rx_sec;
+                    // Skip invalid first-call values (-1) and loopback spikes
+                    if (intf.tx_sec > 0) txBytesSec += intf.tx_sec;
+                    if (intf.rx_sec > 0) rxBytesSec += intf.rx_sec;
                 }
             }
             
-            netUpload = txBytesSec / 1024;   // KB/s
-            netDownload = rxBytesSec / 1024;  // KB/s
+            const rawUp = txBytesSec / 1024;   // KB/s
+            const rawDn = rxBytesSec / 1024;    // KB/s
+
+            // EMA smoothing: prevents wild jumps between samples
+            smoothNetUpload = smoothNetUpload === 0 ? rawUp : smoothNetUpload * (1 - NET_EMA_ALPHA) + rawUp * NET_EMA_ALPHA;
+            smoothNetDownload = smoothNetDownload === 0 ? rawDn : smoothNetDownload * (1 - NET_EMA_ALPHA) + rawDn * NET_EMA_ALPHA;
+
+            netUpload = Math.round(smoothNetUpload * 10) / 10;
+            netDownload = Math.round(smoothNetDownload * 10) / 10;
         }
     } catch (err) {
     }
-}, 500);
+}, 1000);
 
 // ─────────────────────────────────────────────
 //  BUILD RESPONSE DATA (shared by HTTP + WS)
@@ -240,8 +277,8 @@ function buildStateResponse() {
         };
     });
 
-    // ── Raw values (no smoothing — perf counters are already accurate) ──
-    const cpuVal = Math.round(clamp(nativeState.cpu || 0) * 10) / 10;
+    // ── CPU: Use Native PerformanceCounters on Windows (Matches Task Manager) ──
+    const cpuVal = (isWindows && nativeStateReady) ? clamp(nativeState.cpu) : Math.round(clamp(cpuNodeTotal) * 10) / 10;
 
     const memTotal = nativeState.mem_total || os.totalmem();
     const memUsed = nativeState.mem_used || (os.totalmem() - os.freemem());
@@ -251,13 +288,8 @@ function buildStateResponse() {
     const diskWriteMB = Math.round((nativeState.disk_write / (1024 * 1024)) * 10) / 10;
     const diskActive = clamp(nativeState.disk_active);
 
-    // Per-core: prefer PowerShell data, fall back to systeminformation
-    let perCore = [];
-    if (nativeState.per_core && nativeState.per_core.length > 0) {
-        perCore = nativeState.per_core;
-    } else if (perCoreSI.length > 0) {
-        perCore = perCoreSI;
-    }
+    // Per-core: Use Native Windows counters if available
+    let perCore = (isWindows && nativeStateReady && nativeState.per_core.length > 0) ? nativeState.per_core : cpuNodePerCore;
 
     // Use cached osInfo (static data)
     const oi = osInfoCache || {};
@@ -350,8 +382,10 @@ function startWebSocketServer() {
         });
 
         // Broadcast to all clients every 500ms for snappy real-time updates
+        // Only broadcast after telemetry.ps1 has delivered its first valid sample
         wsInterval = setInterval(() => {
             if (!wss || wss.clients.size === 0) return;
+            if (!nativeStateReady) return; // Wait for first telemetry sample
             try {
                 const data = buildStateResponse();
                 const json = JSON.stringify(data);
